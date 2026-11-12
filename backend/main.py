@@ -17,6 +17,9 @@ if str(BACKEND_DIR) not in sys.path:
 
 from database.db import init_db, load_songs_csv_if_empty
 from api.recommendations import router as recommendations_router
+from api.sessions import router as sessions_router
+from api.feedback import router as feedback_router
+from api.emotion import router as emotion_router
 
 
 @asynccontextmanager
@@ -58,6 +61,9 @@ app.add_middleware(
 
 # Register API Routers
 app.include_router(recommendations_router)
+app.include_router(sessions_router)
+app.include_router(feedback_router)
+app.include_router(emotion_router)
 
 
 @app.get("/api/health")

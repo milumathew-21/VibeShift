@@ -29,8 +29,8 @@ def init_db():
     """
     Creates necessary database tables if they do not already exist:
     - songs: Stores song catalog metadata
-    - sessions: Stores user listening sessions
-    - mood_records: Stores mood history for each session
+    - sessions: Stores user listening sessions (integer primary key)
+    - mood_records: Stores mood history for each session (recorded_at timestamp)
     - feedback: Stores user actions (like, skip, replay) for recommendations
     """
     conn = get_db_connection()
@@ -52,26 +52,40 @@ def init_db():
         """
     )
 
-    # 2. Table for listening sessions
+    # Check existing schema of sessions table; if it exists with TEXT session_id,
+    # migrate it to INTEGER AUTOINCREMENT
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'")
+    if cursor.fetchone():
+        cursor.execute("PRAGMA table_info(sessions)")
+        columns = {col[1]: col[2] for col in cursor.fetchall()}
+        if columns.get("session_id") == "TEXT":
+            cursor.execute("DROP TABLE IF EXISTS feedback")
+            cursor.execute("DROP TABLE IF EXISTS mood_records")
+            cursor.execute("DROP TABLE IF EXISTS sessions")
+
+    # 2. Table for listening sessions (session_id as INTEGER AUTOINCREMENT)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS sessions (
-            session_id TEXT PRIMARY KEY,
+            session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            language TEXT,
+            genre TEXT,
+            context TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
     )
 
-    # 3. Table for session mood history
+    # 3. Table for session mood history (journey)
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS mood_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
+            session_id INTEGER NOT NULL,
             mood TEXT NOT NULL,
             confidence REAL DEFAULT 1.0,
             source TEXT DEFAULT 'manual',
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (session_id) REFERENCES sessions (session_id) ON DELETE CASCADE
         );
         """
@@ -82,7 +96,7 @@ def init_db():
         """
         CREATE TABLE IF NOT EXISTS feedback (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT,
+            session_id INTEGER,
             song_id INTEGER NOT NULL,
             action TEXT NOT NULL,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -122,4 +136,3 @@ def load_songs_csv_if_empty():
         print(f"[DB] Songs table already contains {count} records. Skipping CSV load.")
 
     conn.close()
-
