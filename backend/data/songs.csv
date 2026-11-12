@@ -1,0 +1,32 @@
+id,title,artist,language,genre,mood_tags,context_tags,audio_url
+1,Morning Dew,Arun Kumar,Malayalam,Melody,calm|happy,relax|study,/audio/sample1.mp3
+2,Monsoon Whispers,Lakshmi Nair,Malayalam,Classical,calm|neutral,sleep|relax,/audio/sample2.mp3
+3,Backwater Beats,Kochi Trio,Malayalam,Dance,energetic|happy,party|workout,/audio/sample3.mp3
+4,Quiet Shore,Deepak Varma,Malayalam,Melody,sad|calm,relax|travel,/audio/sample4.mp3
+5,Coastal Breeze,Ananya Menon,Malayalam,Pop,happy|energetic,travel|party,/audio/sample5.mp3
+6,Temple Bells,Harish Raj,Malayalam,Classical,calm|neutral,study|sleep,/audio/sample6.mp3
+7,Thunder Roar,Reshma Suresh,Malayalam,Rock,angry|energetic,workout|party,/audio/sample7.mp3
+8,Golden Sunset,Rohit Verma,Hindi,Melody,calm|happy,relax|travel,/audio/sample8.mp3
+9,Neon Spark,DJ Kabir,Hindi,Dance,energetic|happy,party|workout,/audio/sample9.mp3
+10,Rainy Window,Neha Sen,Hindi,Melody,sad|calm,relax|study,/audio/sample10.mp3
+11,Sufi Peace,Aman Ali,Hindi,Classical,calm|neutral,study|relax,/audio/sample11.mp3
+12,Street Power,Rudra Rao,Hindi,Rock,angry|energetic,workout|party,/audio/sample12.mp3
+13,Midnight Coffee,Pooja Das,Hindi,Pop,neutral|calm,study|relax,/audio/sample13.mp3
+14,Desi Groove,Vikram Malhotra,Hindi,Dance,happy|energetic,party|workout,/audio/sample14.mp3
+15,Starlit Drive,Maya Lynn,English,Pop,happy|calm,travel|relax,/audio/sample15.mp3
+16,Midnight Blues,The Neon Shadows,English,Rock,sad|angry,relax|travel,/audio/sample16.mp3
+17,Electric Pulse,Pulsewave,English,Dance,energetic|happy,workout|party,/audio/sample17.mp3
+18,Soft Shadows,Sarah Stone,English,Melody,sad|calm,sleep|relax,/audio/sample18.mp3
+19,City Lights,Oliver Vance,English,Pop,energetic|happy,party|travel,/audio/sample19.mp3
+20,Piano Reverie,Claire Evans,English,Classical,calm|neutral,study|sleep,/audio/sample20.mp3
+21,Rebel Flame,Iron Horizon,English,Rock,angry|energetic,workout|party,/audio/sample21.mp3
+22,Breeze of Marina,Siddharth,Tamil,Melody,calm|happy,relax|travel,/audio/sample22.mp3
+23,Chennai Pulse,DJ Karthik,Tamil,Dance,energetic|happy,party|workout,/audio/sample23.mp3
+24,Soul of Madurai,Meenakshi R,Tamil,Classical,calm|neutral,study|sleep,/audio/sample24.mp3
+25,Stormy Night,Vijay K,Tamil,Rock,angry|energetic,workout|travel,/audio/sample25.mp3
+26,Silent Tears,Divya Nathan,Tamil,Melody,sad|calm,relax|sleep,/audio/sample26.mp3
+27,Carnatic Jazz,Sriram & Friends,Tamil,Classical,happy|calm,study|relax,/audio/sample27.mp3
+28,Urban Beat,Praveen Raj,Tamil,Pop,happy|energetic,travel|party,/audio/sample28.mp3
+29,Autumn Wind,Elena Grey,English,Melody,sad|neutral,relax|sleep,/audio/sample29.mp3
+30,Festival Dhol,Aryan Beats,Hindi,Dance,energetic|happy,party|workout,/audio/sample30.mp3
+
