@@ -137,10 +137,10 @@ from fastapi import APIRouter, File, UploadFile
 from starlette.concurrency import run_in_threadpool
 from backend.ai import predict
 
-router = APIRouter()
+router = APIRouter(prefix="/api/emotion", tags=["Emotion"])
 
-@router.post("/estimate")
-async def estimate_expression(file: UploadFile = File(...)):
+@router.post("")
+async def predict_emotion(file: UploadFile = File(...)):
     image_bytes = await file.read()
     # Runs CPU-bound inference non-blockingly
     ai_result = await run_in_threadpool(predict, image_bytes)
