@@ -114,20 +114,20 @@ The test suite validates:
 In accordance with the finalized AI/Backend compatibility agreement:
 
 ### 1. Canonical Expression Labels
-The 7 canonical expression labels remain strictly unchanged:
+The 7 canonical expression labels produced by the AI module remain strictly unchanged:
 `"angry"`, `"disgust"`, `"fear"`, `"happy"`, `"sad"`, `"surprise"`, `"neutral"`.
 
 ### 2. Mood Mapping Logic (Backend Side)
 * **Direct Music Mood Matches:**
-  * `"happy"` $\rightarrow$ **Happy**
-  * `"sad"` $\rightarrow$ **Sad**
-  * `"angry"` $\rightarrow$ **Energetic / Angry**
-  * `"neutral"` $\rightarrow$ **Calm / Neutral**
+  * `"happy"` $\rightarrow$ **happy**
+  * `"sad"` $\rightarrow$ **sad**
+  * `"angry"` $\rightarrow$ **angry**
+  * `"neutral"` $\rightarrow$ **neutral**
 * **Ambiguous Expressions (Manual Mood Selection Required):**
   * `"surprise"`, `"fear"`, `"disgust"` $\rightarrow$ Prompt the user for manual mood selection on the frontend.
 * **Safety & Fallback Policy:**
-  * Predictions with `status == "low_confidence"` or `status == "no_face_detected"` **must never silently default to `"neutral"`**.
-  * The backend must return the specific status so the UI can gently prompt the user to adjust lighting, face the camera, or choose their mood manually.
+  * Predictions with `status == "low_confidence"` or `status == "no_face_detected"` **require manual mood selection and must never silently default to `"neutral"`**.
+  * The backend returns the specific status so the UI can gently prompt the user to adjust lighting, face the camera, or choose their mood manually.
 
 ### 3. Non-Blocking Threadpool Execution
 Because PyTorch and OpenCV inference are CPU-bound, the FastAPI route must run `predict` inside Starlette's threadpool:
@@ -143,32 +143,46 @@ router = APIRouter()
 async def estimate_expression(file: UploadFile = File(...)):
     image_bytes = await file.read()
     # Runs CPU-bound inference non-blockingly
-    result = await run_in_threadpool(predict, image_bytes)
-    return result
+    ai_result = await run_in_threadpool(predict, image_bytes)
+    
+    # Map AI prediction to external FastAPI response contract:
+    # Retains existing 'emotion', 'confidence', 'note', with optional 'status'
+    return {
+        "emotion": ai_result.get("expression"),
+        "confidence": ai_result.get("confidence"),
+        "note": ai_result.get("disclaimer"),
+        "status": ai_result.get("status"),
+    }
 ```
 
-### 4. API Contract Schema
-The API maintains the core fields while exposing the `status` diagnostics:
-```json
-{
-  "face_detected": true,
-  "expression": "happy",
-  "confidence": 0.8845,
-  "status": "success",
-  "disclaimer": "Facial-expression predictions are estimates based on visual features and do not represent a person's actual emotional state.",
-  "bbox": [114, 103, 172, 172],
-  "expression_scores": {
-    "angry": 0.0121,
-    "disgust": 0.0045,
-    "fear": 0.0098,
-    "happy": 0.8845,
-    "sad": 0.0112,
-    "surprise": 0.0354,
-    "neutral": 0.0425
-  },
-  "latency_ms": 68.4
-}
-```
+### 4. API Contract Distinction: External API vs. Internal AI Module
+
+* **External FastAPI Response Schema:**
+  Retains the agreed client-facing fields:
+  ```json
+  {
+    "emotion": "happy",
+    "confidence": 0.8845,
+    "note": "Facial-expression predictions are estimates based on visual features and do not represent a person's actual emotional state.",
+    "status": "success"
+  }
+  ```
+  *(When no face is detected or confidence is low, `emotion` and `confidence` are `null`, and `status` is set to `"no_face_detected"` or `"low_confidence"` so the frontend can trigger manual mood selection).*
+
+* **Internal AI Module Output (`backend.ai.predict`):**
+  The AI module retains its rich diagnostic payload for internal debugging and evaluation:
+  ```python
+  {
+      "face_detected": bool,
+      "expression": Optional[str],
+      "confidence": Optional[float],
+      "status": str,
+      "disclaimer": str,
+      "bbox": Optional[List[int]],
+      "expression_scores": Optional[Dict[str, float]],
+      "latency_ms": float
+  }
+  ```
 
 ---
 
