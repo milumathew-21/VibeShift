@@ -241,6 +241,17 @@ def run_tests() -> bool:
     assert res_recovered["face_detected"] is True
     assert res_recovered["expression"] is not None
 
+    # 11E. Anti-flooding verification on repeated predict() calls
+    print("    [11E] Verifying Anti-Flooding on 50 Rapid predict() calls...")
+    init_err_count = log_stream.getvalue().count("Face detector is unavailable")
+    for _ in range(50):
+        r = ai.predict(face_img, detector=unavailable_detector)
+        assert r["status"] == "face_detector_unavailable"
+    final_err_count = log_stream.getvalue().count("Face detector is unavailable")
+    print(f"          50 rapid predict() calls completed.")
+    print(f"          ERROR logs emitted: {final_err_count - init_err_count} (expected exactly 1 on initial transition)")
+    assert final_err_count - init_err_count == 1, "Repeated predict() calls flooded the error log!"
+
     print("\n" + "=" * 65)
     print("ALL 11 VERIFICATION TESTS COMPLETED SUCCESSFULLY!")
     print("=" * 65)

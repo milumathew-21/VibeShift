@@ -317,6 +317,7 @@ _DEFAULT_DETECTOR: Optional[FaceDetector] = None
 _DEFAULT_MODEL: Optional[Union[EmotionModelInterface, EmotiEffAdapter]] = None
 _LAST_DETECTOR_INIT_ATTEMPT: float = 0.0
 _DETECTOR_INIT_COOLDOWN: float = 2.0  # Minimum seconds between retry attempts when unavailable
+_LAST_DETECTOR_UNAVAILABLE_LOGGED: Optional[str] = None
 
 
 def get_default_detector() -> FaceDetector:
@@ -325,7 +326,7 @@ def get_default_detector() -> FaceDetector:
     If a previous initialization failed, retries after a cooldown period to allow recovery
     without flooding server logs with duplicate error messages on rapid requests.
     """
-    global _DEFAULT_DETECTOR, _LAST_DETECTOR_INIT_ATTEMPT
+    global _DEFAULT_DETECTOR, _LAST_DETECTOR_INIT_ATTEMPT, _LAST_DETECTOR_UNAVAILABLE_LOGGED
     now = time.perf_counter()
 
     if _DEFAULT_DETECTOR is None:
@@ -340,6 +341,7 @@ def get_default_detector() -> FaceDetector:
             new_detector = FaceDetector()
             if new_detector.is_available:
                 logger.info("Shared FaceDetector successfully initialized (loaded from: '%s')", new_detector.cascade_path)
+            _LAST_DETECTOR_UNAVAILABLE_LOGGED = None  # Reset so post-retry status can be logged once if still failing
             _DEFAULT_DETECTOR = new_detector
 
     return _DEFAULT_DETECTOR
@@ -437,15 +439,25 @@ def predict(
         }
 
     # Step 2: Initialize / check face detector
+    global _LAST_DETECTOR_UNAVAILABLE_LOGGED
+
     if detector is None:
         detector = get_default_detector()
 
     if not detector.is_available:
         latency = (time.perf_counter() - start_time) * 1000.0
-        logger.error(
-            "Prediction aborted: Face detector is unavailable (%s). Returning status 'face_detector_unavailable'.",
-            detector.load_error,
-        )
+        err_msg = str(detector.load_error)
+        if _LAST_DETECTOR_UNAVAILABLE_LOGGED != err_msg:
+            logger.error(
+                "Prediction aborted: Face detector is unavailable (%s). Returning status 'face_detector_unavailable'.",
+                err_msg,
+            )
+            _LAST_DETECTOR_UNAVAILABLE_LOGGED = err_msg
+        else:
+            logger.debug(
+                "Prediction aborted: Face detector remains unavailable (%s). Status 'face_detector_unavailable'.",
+                err_msg,
+            )
         return {
             "face_detected": False,
             "expression": None,
@@ -456,6 +468,10 @@ def predict(
             "expression_scores": None,
             "latency_ms": round(latency, 2),
         }
+
+    # Reset logged state once detector is operational
+    if _LAST_DETECTOR_UNAVAILABLE_LOGGED is not None:
+        _LAST_DETECTOR_UNAVAILABLE_LOGGED = None
 
     # Step 3: Detect face
     faces = detector.detect_faces(image)
