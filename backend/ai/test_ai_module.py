@@ -6,25 +6,48 @@ Standalone test verification suite for VibeShift AI Module.
 Author: Milu (Member 3 – AI Developer)
 
 Validates:
-1. Face detection on synthetic face canvas.
-2. Prediction output schema and data types.
-3. Pretrained EmotiEffLib EfficientNet-B2 checkpoint inference and AffectNet-7 label remapping.
-4. Input format decodings: ndarray, JPEG bytes, base64 data URI, file path.
-5. Error handling: corrupt bytes, blank frame (no face).
-6. Latency benchmarks (cold run vs warm runs).
-7. FastAPI contract compliance.
+1. Face detector availability and Haar cascade loading.
+2. Checkpoint loading with weights_only=True.
+3. Geometric face detection on synthetic portrait canvas.
+4. End-to-end inference on NumPy arrays.
+5. End-to-end inference on raw JPEG bytes.
+6. End-to-end inference on Base64 data URIs.
+7. End-to-end inference on file paths.
+8. Error handling: corrupt bytes (invalid_image) and blank frames (no_face_detected).
+9. CPU latency benchmarks.
+10. FastAPI integration JSON schema compliance.
+11. Diagnostic & detector failure modes (Nethra Integration Test Suite):
+    - 11A: Haar Cascade successfully loaded + no face -> no_face_detected
+    - 11B: Haar Cascade missing/unavailable -> face_detector_unavailable
+    - 11C: Haar Cascade initialization exception -> logged diagnostic
+    - 11D: Successful real-face prediction remains functional after error tests
 
 Usage:
     python -m backend.ai.test_ai_module
 """
 
 import base64
+import io
 import json
+import logging
 import os
 import sys
 import tempfile
 import time
 from pathlib import Path
+
+# Configure logging to capture and display module logs during testing
+log_stream = io.StringIO()
+handler = logging.StreamHandler(log_stream)
+handler.setFormatter(logging.Formatter("%(levelname)s [%(name)s] %(message)s"))
+root_logger = logging.getLogger("backend.ai")
+root_logger.setLevel(logging.INFO)
+root_logger.addHandler(handler)
+
+# Also echo to stdout for visibility
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setFormatter(logging.Formatter("    LOG: %(levelname)s [%(name)s] %(message)s"))
+root_logger.addHandler(stdout_handler)
 
 # Ensure repository root is in sys.path
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -35,6 +58,7 @@ import cv2
 import numpy as np
 
 import backend.ai as ai
+from backend.ai.face_detector import FaceDetector
 
 
 def create_synthetic_face() -> np.ndarray:
@@ -128,14 +152,14 @@ def run_tests() -> bool:
             os.remove(tmp_path)
 
     # 8. Error Handling Edge Cases
-    print("\n[8] Testing Error Handling:")
-    # Case A: Corrupt bytes
+    print("\n[8] Testing Standard Error Handling:")
+    # Case A: Corrupt bytes -> invalid_image
     res_corrupt = ai.predict(b"this is corrupt non-image bytes")
     print(f"    A. Corrupt bytes -> status: '{res_corrupt['status']}', face_detected: {res_corrupt['face_detected']}")
     assert res_corrupt["status"] == "invalid_image"
     assert res_corrupt["face_detected"] is False
 
-    # Case B: Blank frame (no face)
+    # Case B: Blank frame (no face) -> no_face_detected
     blank_canvas = np.zeros((400, 400, 3), dtype=np.uint8)
     res_blank = ai.predict(blank_canvas)
     print(f"    B. Blank frame -> status: '{res_blank['status']}', face_detected: {res_blank['face_detected']}")
@@ -170,8 +194,66 @@ def run_tests() -> bool:
     print("    Sample JSON Payload for FastAPI:")
     print(json_output)
 
+    # 11. Diagnostic & Detector Failure Modes (Nethra Integration Test Suite)
+    print("\n[11] Diagnostic & Detector Failure Modes (Nethra Integration Tests):")
+
+    # 11A. Haar Cascade successfully loaded + image containing no face -> no_face_detected
+    print("    [11A] Testing Loaded Detector + No-Face Image...")
+    res_noface = ai.predict(blank_canvas, detector=detector)
+    print(f"          Result -> status: '{res_noface['status']}', face_detected: {res_noface['face_detected']}")
+    assert res_noface["status"] == "no_face_detected"
+    assert res_noface["face_detected"] is False
+    assert res_noface["expression"] is None
+    assert res_noface["confidence"] is None
+
+    # 11B. Haar Cascade missing/unavailable -> face_detector_unavailable
+    print("    [11B] Testing Missing/Unavailable Detector...")
+    unavailable_detector = FaceDetector.__new__(FaceDetector)
+    unavailable_detector.classifier = None
+    unavailable_detector.cascade_path = None
+    unavailable_detector._is_loaded = False
+    unavailable_detector._load_error = "Haar cascade XML file not found at any candidate path"
+    assert not unavailable_detector.is_available
+    res_unavailable = ai.predict(face_img, detector=unavailable_detector)
+    print(f"          Result -> status: '{res_unavailable['status']}', face_detected: {res_unavailable['face_detected']}")
+    assert res_unavailable["status"] == "face_detector_unavailable"
+    assert res_unavailable["face_detected"] is False
+
+    # 11C. Haar Cascade initialization exception -> logged diagnostic
+    print("    [11C] Testing Corrupt/Empty XML Detector Initialization Exception...")
+    with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as tmp_xml:
+        tmp_xml.write(b"<invalid_corrupted_xml_content></bad>")
+        corrupt_path = tmp_xml.name
+    try:
+        corrupt_detector = FaceDetector(cascade_path=corrupt_path)
+        assert not corrupt_detector.is_available
+        print(f"          Corrupt XML detector correctly reported unavailable: '{corrupt_detector.load_error}'")
+        res_corrupt_det = ai.predict(face_img, detector=corrupt_detector)
+        assert res_corrupt_det["status"] == "face_detector_unavailable"
+    finally:
+        if os.path.exists(corrupt_path):
+            os.remove(corrupt_path)
+
+    # 11D. Successful real-face prediction remains functional after error tests
+    print("    [11D] Re-verifying Real Face Prediction with Default Detector...")
+    res_recovered = ai.predict(face_img)
+    print(f"          Result -> status: '{res_recovered['status']}', face_detected: {res_recovered['face_detected']}, expr: {res_recovered['expression']}")
+    assert res_recovered["face_detected"] is True
+    assert res_recovered["expression"] is not None
+
+    # 11E. Anti-flooding verification on repeated predict() calls
+    print("    [11E] Verifying Anti-Flooding on 50 Rapid predict() calls...")
+    init_err_count = log_stream.getvalue().count("Face detector is unavailable")
+    for _ in range(50):
+        r = ai.predict(face_img, detector=unavailable_detector)
+        assert r["status"] == "face_detector_unavailable"
+    final_err_count = log_stream.getvalue().count("Face detector is unavailable")
+    print(f"          50 rapid predict() calls completed.")
+    print(f"          ERROR logs emitted: {final_err_count - init_err_count} (expected exactly 1 on initial transition)")
+    assert final_err_count - init_err_count == 1, "Repeated predict() calls flooded the error log!"
+
     print("\n" + "=" * 65)
-    print("ALL 10 VERIFICATION TESTS COMPLETED SUCCESSFULLY!")
+    print("ALL 11 VERIFICATION TESTS COMPLETED SUCCESSFULLY!")
     print("=" * 65)
     return True
 
@@ -179,4 +261,3 @@ def run_tests() -> bool:
 if __name__ == "__main__":
     success = run_tests()
     sys.exit(0 if success else 1)
-
