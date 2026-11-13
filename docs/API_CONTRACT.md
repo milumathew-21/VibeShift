@@ -11,12 +11,12 @@ CORS is enabled for the frontend React/Vite development server (`http://localhos
 | # | Method | URL Path | Purpose |
 |---|--------|----------|---------|
 | 1 | `GET` | `/api/health` | Server health check |
-| 2 | `POST` | `/api/recommendations` | Get weighted song recommendations |
+| 2 | `POST` | `/api/recommendations` | Get weighted song recommendations (Spotify links) |
 | 3 | `POST` | `/api/sessions` | Create a new user listening session |
 | 4 | `POST` | `/api/sessions/{id}/mood` | Log a confirmed mood in the session journey |
 | 5 | `GET` | `/api/sessions/{id}/journey` | Retrieve mood timeline history for charts |
 | 6 | `POST` | `/api/feedback` | Record user feedback (like, skip, replay) |
-| 7 | `POST` | `/api/emotion` | Estimate emotion from uploaded facial image |
+| 7 | `POST` | `/api/emotion` | Estimate emotion from uploaded facial photo |
 
 ---
 
@@ -42,6 +42,10 @@ Checks whether the backend server is operational.
 ### `POST /api/recommendations`
 Returns the top 10 recommended songs based on user mood, preferences, and feedback history.
 
+> **Important Note on `audio_url`**:  
+> The `audio_url` field provides a **Spotify track link** (e.g. `https://open.spotify.com/track/...`), not an audio file path.  
+> The frontend should **open or embed** it (using a Spotify embed iframe or opening the link), **not** play it as a raw audio file.
+
 - **Content-Type**: `application/json`
 
 #### Request Body
@@ -50,9 +54,9 @@ Returns the top 10 recommended songs based on user mood, preferences, and feedba
   "current_mood": "happy",
   "mode": "match",
   "target_mood": null,
-  "language": "Malayalam",
+  "language": "English",
   "genre": "Pop",
-  "context": "travel"
+  "context": "workout"
 }
 ```
 
@@ -69,31 +73,42 @@ Returns the top 10 recommended songs based on user mood, preferences, and feedba
 ```json
 [
   {
-    "id": 5,
-    "title": "Coastal Breeze",
-    "artist": "Ananya Menon",
-    "language": "Malayalam",
+    "id": 1,
+    "title": "Big Dawgs",
+    "artist": "Hanumankind, Kalmi",
+    "language": "English",
+    "genre": "Pop",
+    "mood_tags": [
+      "angry",
+      "energetic"
+    ],
+    "audio_url": "https://open.spotify.com/track/0OA00aPt3BV10qeMIs3meW"
+  },
+  {
+    "id": 2,
+    "title": "Bye Bye Bye - From Deadpool and Wolverine Soundtrack",
+    "artist": "*NSYNC",
+    "language": "English",
     "genre": "Pop",
     "mood_tags": [
       "happy",
       "energetic"
     ],
-    "audio_url": "/audio/sample5.mp3"
-  },
-  {
-    "id": 1,
-    "title": "Morning Dew",
-    "artist": "Arun Kumar",
-    "language": "Malayalam",
-    "genre": "Melody",
-    "mood_tags": [
-      "calm",
-      "happy"
-    ],
-    "audio_url": "/audio/sample1.mp3"
+    "audio_url": "https://open.spotify.com/track/62bOmKYxYg7dhrC6gH9vFn"
   }
 ]
 ```
+
+#### Response Item Fields
+| Field | Type | Description |
+|---|---|---|
+| `id` | integer | Unique song ID |
+| `title` | string | Song title |
+| `artist` | string | Artist name |
+| `language` | string | Song language |
+| `genre` | string | Song genre |
+| `mood_tags` | array of strings | Mood tags associated with the song (e.g. `["happy", "energetic"]`) |
+| `audio_url` | string | **Spotify track link** (`https://open.spotify.com/track/...`). Open or embed in Spotify player. |
 
 #### Error Responses
 - **`400 Bad Request`**: When `mode` is not `"match"` or `"change"`, or when `mode` is `"change"` and `target_mood` is missing.
@@ -115,9 +130,9 @@ Initializes a new listening session for tracking mood transitions and feedback.
 #### Request Body (All fields optional)
 ```json
 {
-  "language": "Malayalam",
-  "genre": "Melody",
-  "context": "relax"
+  "language": "English",
+  "genre": "Pop",
+  "context": "workout"
 }
 ```
 
@@ -125,7 +140,7 @@ Initializes a new listening session for tracking mood transitions and feedback.
 ```json
 {
   "session_id": 1,
-  "created_at": "2026-11-12 11:20:00"
+  "created_at": "2026-11-13 07:20:00"
 }
 ```
 
@@ -162,7 +177,7 @@ Records a confirmed mood entry into the session journey.
   "mood": "sad",
   "source": "manual",
   "confidence": 0.95,
-  "recorded_at": "2026-11-12 11:21:15"
+  "recorded_at": "2026-11-13 07:21:15"
 }
 ```
 
@@ -198,17 +213,17 @@ Retrieves the chronological mood timeline for a session (oldest first), designed
     {
       "mood": "sad",
       "source": "manual",
-      "recorded_at": "2026-11-12 11:20:10"
+      "recorded_at": "2026-11-13 07:20:10"
     },
     {
       "mood": "neutral",
       "source": "recheck",
-      "recorded_at": "2026-11-12 11:35:00"
+      "recorded_at": "2026-11-13 07:35:00"
     },
     {
       "mood": "calm",
       "source": "camera_suggested",
-      "recorded_at": "2026-11-12 11:50:30"
+      "recorded_at": "2026-11-13 07:50:30"
     }
   ]
 }
@@ -290,36 +305,41 @@ Uploads a user facial photo in-memory to estimate current facial expression usin
 
 ---
 
-### Facial Expression to Music Mood Mapping (`EXPRESSION_TO_MOOD`)
+### Expression-to-Mood Mapping Table (`EXPRESSION_TO_MOOD`)
 
-Only unambiguous expressions map directly to VibeShift music moods. Ambiguous or high-arousal expressions (`surprise`, `fear`, `disgust`) have **no automatic mood** and return `emotion = null` with a note prompting the user to choose manually. **The system never returns neutral silently.**
+Only clear, unambiguous expressions automatically map to a music mood. Ambiguous or high-arousal expressions (`surprise`, `fear`, `disgust`) have **no automatic mood**.
 
-| Detected Expression | Mapped Music Mood (`emotion`) | Behavior / Note |
-|---|---|---|
-| `happy` | `"happy"` | Direct match with standard disclaimer |
-| `sad` | `"sad"` | Direct match with standard disclaimer |
-| `angry` | `"angry"` | Direct match with standard disclaimer |
-| `neutral` | `"neutral"` | Direct match with standard disclaimer |
-| `surprise` | `null` | No automatic mood mapping; prompts user to select manually |
-| `fear` | `null` | No automatic mood mapping; prompts user to select manually |
-| `disgust` | `null` | No automatic mood mapping; prompts user to select manually |
+> **Frontend Rule**:  
+> Whenever `emotion` is `null`, the frontend **must show the manual mood picker**. The system **never returns neutral silently**.
+
+| AI Expression | Mapped Mood (`emotion`) | Automatic? | Note / Frontend Action |
+|---|---|---|---|
+| `happy` | `"happy"` | Yes | Mapped automatically with standard disclaimer |
+| `sad` | `"sad"` | Yes | Mapped automatically with standard disclaimer |
+| `angry` | `"angry"` | Yes | Mapped automatically with standard disclaimer |
+| `neutral` | `"neutral"` | Yes | Mapped automatically with standard disclaimer |
+| `surprise` | `null` | **No** | No automatic mood. Frontend must show manual mood picker. |
+| `fear` | `null` | **No** | No automatic mood. Frontend must show manual mood picker. |
+| `disgust` | `null` | **No** | No automatic mood. Frontend must show manual mood picker. |
+| *`calm`* | — | — | **Manual choice only** (not detected from camera facial expressions). |
+| *`energetic`* | — | — | **Manual choice only** (not detected from camera facial expressions). |
 
 ---
 
 ### Detection Status Values (`status`)
 
-The `status` field communicates the exact state of face detection and AI inference from `backend/ai/emotion_model.py`:
+The `status` field returns the exact status string from the AI detection pipeline:
 
-| Status Word | Meaning | Resulting `emotion` |
-|---|---|---|
-| `success` | Normal decisive prediction with verified weights | Mapped mood or `null` (if surprise/fear/disgust) |
-| `no_face_detected` | Detector operational, but no human face found in photo | `null` (prompts manual mood selection) |
-| `low_confidence` | Prediction confidence below threshold | `null` (prompts manual mood selection) |
-| `model_weights_not_loaded` | Verified model weights pending; inference safely blocked | `null` (prompts manual mood selection) |
-| `invalid_image` | Image input could not be decoded or was malformed | `null` (prompts manual mood selection) |
-| `face_detector_unavailable` | OpenCV Haar cascade or detector classifier missing | `null` (prompts manual mood selection) |
-| `preprocessing_failed` | Face bounding box could not be cropped or normalized | `null` (prompts manual mood selection) |
-| `error` | Unexpected internal exception handled gracefully | `null` (prompts manual mood selection) |
+| Status Value | Meaning | Resulting `emotion` | Frontend Requirement |
+|---|---|---|---|
+| `success` | Face detected and decisive prediction made | Mapped mood, or `null` if surprise/fear/disgust | If `emotion` is `null`, show manual mood picker |
+| `no_face_detected` | Detector is operational, but no human face was found | `null` | Show manual mood picker |
+| `low_confidence` | Face found, but prediction confidence is below threshold | `null` | Show manual mood picker |
+| `model_weights_not_loaded` | Pretrained AI model weights are not loaded; inference safely blocked | `null` | Show manual mood picker |
+| `face_detector_unavailable` | OpenCV Haar cascade or detector classifier missing | `null` | Show manual mood picker |
+| `preprocessing_failed` | Face bounding box could not be cropped or normalized | `null` | Show manual mood picker |
+| `invalid_image` | Image input could not be decoded or was malformed | `null` | Show manual mood picker |
+| `error` | Unexpected exception caught during processing | `null` | Show manual mood picker |
 
 ---
 
@@ -327,9 +347,9 @@ The `status` field communicates the exact state of face detection and AI inferen
 
 | Field | Type | Description |
 |---|---|---|
-| `emotion` | string or `null` | Detected music mood (`"happy"`, `"sad"`, `"angry"`, `"neutral"`), or `null` if unmapped or not successful |
+| `emotion` | string or `null` | Detected music mood (`"happy"`, `"sad"`, `"angry"`, `"neutral"`), or `null` if unmapped, low confidence, or failed |
 | `confidence` | float | Confidence score between `0.0` and `1.0` (rounded to 2 decimal places) |
-| `status` | string | Exact detection status from AI pipeline (e.g., `"success"`, `"no_face_detected"`, `"low_confidence"`) |
+| `status` | string | Exact status value from AI pipeline (see table above) |
 | `note` | string | Disclaimer or user guidance prompt (asks user to choose mood manually when `emotion` is `null`) |
 
 ---
@@ -356,13 +376,23 @@ The `status` field communicates the exact state of face detection and AI inferen
 }
 ```
 
-**3. No Face Found (`no_face_detected` -> returns `null`):**
+**3. No Face Detected (`no_face_detected` -> returns `null`):**
 ```json
 {
   "emotion": null,
   "confidence": 0.0,
   "status": "no_face_detected",
   "note": "No face was detected in the photo. Please choose your mood manually."
+}
+```
+
+**4. Low Confidence (`low_confidence` -> returns `null`):**
+```json
+{
+  "emotion": null,
+  "confidence": 0.28,
+  "status": "low_confidence",
+  "note": "Facial expression confidence is low. Please choose your mood manually."
 }
 ```
 
@@ -381,5 +411,3 @@ The `status` field communicates the exact state of face detection and AI inferen
     "detail": "The uploaded image file is empty. Please upload a valid image."
   }
   ```
-
-
