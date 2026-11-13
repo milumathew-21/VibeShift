@@ -352,6 +352,9 @@ The `status` field returns the exact status string from the AI detection pipelin
 | `status` | string | Exact status value from AI pipeline (see table above) |
 | `note` | string | Disclaimer or user guidance prompt (asks user to choose mood manually when `emotion` is `null`) |
 
+> **Note on Confidence & Frontend Decision**:  
+> When emotion is null and status is not success, confidence is 0.0. This is a placeholder, not a real model prediction. The frontend must decide using emotion (null) and status, never confidence alone.
+
 ---
 
 #### Sample Responses (`200 OK`)
