@@ -14,6 +14,7 @@ In adherence to VibeShift AI engineering principles:
    blocked until verified, evaluated pretrained weights are explicitly loaded.
 """
 
+import logging
 import os
 from pathlib import Path
 import time
@@ -22,6 +23,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.models as models
+
+logger = logging.getLogger(__name__)
 
 from backend.ai.face_detector import FaceDetector
 from backend.ai.preprocess import (
@@ -312,13 +315,33 @@ class EmotiEffAdapter:
 # Singleton/cached instances for lightweight reuse in FastAPI
 _DEFAULT_DETECTOR: Optional[FaceDetector] = None
 _DEFAULT_MODEL: Optional[Union[EmotionModelInterface, EmotiEffAdapter]] = None
+_LAST_DETECTOR_INIT_ATTEMPT: float = 0.0
+_DETECTOR_INIT_COOLDOWN: float = 2.0  # Minimum seconds between retry attempts when unavailable
 
 
 def get_default_detector() -> FaceDetector:
-    """Returns or lazily creates a shared FaceDetector instance."""
-    global _DEFAULT_DETECTOR
+    """
+    Returns or lazily creates a shared FaceDetector instance.
+    If a previous initialization failed, retries after a cooldown period to allow recovery
+    without flooding server logs with duplicate error messages on rapid requests.
+    """
+    global _DEFAULT_DETECTOR, _LAST_DETECTOR_INIT_ATTEMPT
+    now = time.perf_counter()
+
     if _DEFAULT_DETECTOR is None:
+        _LAST_DETECTOR_INIT_ATTEMPT = now
         _DEFAULT_DETECTOR = FaceDetector()
+        return _DEFAULT_DETECTOR
+
+    if not _DEFAULT_DETECTOR.is_available:
+        if (now - _LAST_DETECTOR_INIT_ATTEMPT) >= _DETECTOR_INIT_COOLDOWN:
+            _LAST_DETECTOR_INIT_ATTEMPT = now
+            logger.info("Retrying shared FaceDetector initialization after previous failure...")
+            new_detector = FaceDetector()
+            if new_detector.is_available:
+                logger.info("Shared FaceDetector successfully initialized (loaded from: '%s')", new_detector.cascade_path)
+            _DEFAULT_DETECTOR = new_detector
+
     return _DEFAULT_DETECTOR
 
 
@@ -419,6 +442,10 @@ def predict(
 
     if not detector.is_available:
         latency = (time.perf_counter() - start_time) * 1000.0
+        logger.error(
+            "Prediction aborted: Face detector is unavailable (%s). Returning status 'face_detector_unavailable'.",
+            detector.load_error,
+        )
         return {
             "face_detected": False,
             "expression": None,
@@ -436,6 +463,10 @@ def predict(
 
     if primary_face is None:
         latency = (time.perf_counter() - start_time) * 1000.0
+        logger.info(
+            "Face detection completed: 0 faces found in image (shape: %s). Returning status 'no_face_detected'.",
+            image.shape[:2],
+        )
         return {
             "face_detected": False,
             "expression": None,

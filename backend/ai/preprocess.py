@@ -18,11 +18,14 @@ these parameters must be aligned with the checkpoint's documented training param
 
 import base64
 import binascii
+import logging
 import os
 from typing import Optional, Sequence, Tuple, Union
 import cv2
 import numpy as np
 import torch
+
+logger = logging.getLogger(__name__)
 
 
 # Default ImageNet normalization parameters for RGB backbones.
