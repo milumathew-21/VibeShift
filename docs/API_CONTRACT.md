@@ -282,20 +282,91 @@ Records user interactions on a song (`like`, `skip`, or `replay`). These actions
 ## 7. Estimate Emotion from Facial Image
 
 ### `POST /api/emotion`
-Uploads a user photo in-memory to estimate current facial expression. Images are never saved to disk.
+Uploads a user facial photo in-memory to estimate current facial expression using `backend.ai.predict`. Images are processed entirely in memory and **never saved to disk**.
 
 - **Content-Type**: `multipart/form-data`
 - **Form Data**:
   - `file`: Image binary (`.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp`)
 
-#### Success Response (`200 OK`)
+---
+
+### Facial Expression to Music Mood Mapping (`EXPRESSION_TO_MOOD`)
+
+Only unambiguous expressions map directly to VibeShift music moods. Ambiguous or high-arousal expressions (`surprise`, `fear`, `disgust`) have **no automatic mood** and return `emotion = null` with a note prompting the user to choose manually. **The system never returns neutral silently.**
+
+| Detected Expression | Mapped Music Mood (`emotion`) | Behavior / Note |
+|---|---|---|
+| `happy` | `"happy"` | Direct match with standard disclaimer |
+| `sad` | `"sad"` | Direct match with standard disclaimer |
+| `angry` | `"angry"` | Direct match with standard disclaimer |
+| `neutral` | `"neutral"` | Direct match with standard disclaimer |
+| `surprise` | `null` | No automatic mood mapping; prompts user to select manually |
+| `fear` | `null` | No automatic mood mapping; prompts user to select manually |
+| `disgust` | `null` | No automatic mood mapping; prompts user to select manually |
+
+---
+
+### Detection Status Values (`status`)
+
+The `status` field communicates the exact state of face detection and AI inference from `backend/ai/emotion_model.py`:
+
+| Status Word | Meaning | Resulting `emotion` |
+|---|---|---|
+| `success` | Normal decisive prediction with verified weights | Mapped mood or `null` (if surprise/fear/disgust) |
+| `no_face_detected` | Detector operational, but no human face found in photo | `null` (prompts manual mood selection) |
+| `low_confidence` | Prediction confidence below threshold | `null` (prompts manual mood selection) |
+| `model_weights_not_loaded` | Verified model weights pending; inference safely blocked | `null` (prompts manual mood selection) |
+| `invalid_image` | Image input could not be decoded or was malformed | `null` (prompts manual mood selection) |
+| `face_detector_unavailable` | OpenCV Haar cascade or detector classifier missing | `null` (prompts manual mood selection) |
+| `preprocessing_failed` | Face bounding box could not be cropped or normalized | `null` (prompts manual mood selection) |
+| `error` | Unexpected internal exception handled gracefully | `null` (prompts manual mood selection) |
+
+---
+
+#### Response Schema
+
+| Field | Type | Description |
+|---|---|---|
+| `emotion` | string or `null` | Detected music mood (`"happy"`, `"sad"`, `"angry"`, `"neutral"`), or `null` if unmapped or not successful |
+| `confidence` | float | Confidence score between `0.0` and `1.0` (rounded to 2 decimal places) |
+| `status` | string | Exact detection status from AI pipeline (e.g., `"success"`, `"no_face_detected"`, `"low_confidence"`) |
+| `note` | string | Disclaimer or user guidance prompt (asks user to choose mood manually when `emotion` is `null`) |
+
+---
+
+#### Sample Responses (`200 OK`)
+
+**1. Successful Mapping (`happy`):**
 ```json
 {
-  "emotion": "neutral",
-  "confidence": 0.0,
-  "note": "This is only an estimate of facial expression, not proof of feelings. Camera emotion estimation is optional and provides visual cues only, with no medical or diagnostic claims."
+  "emotion": "happy",
+  "confidence": 0.88,
+  "status": "success",
+  "note": "This is only an estimate of facial expression, not proof of feelings."
 }
 ```
+
+**2. Ambiguous Expression (`surprise` -> unmapped, returns `null`):**
+```json
+{
+  "emotion": null,
+  "confidence": 0.76,
+  "status": "success",
+  "note": "Detected facial expression is 'surprise', which has no direct music mood mapping. Please choose your mood manually."
+}
+```
+
+**3. No Face Found (`no_face_detected` -> returns `null`):**
+```json
+{
+  "emotion": null,
+  "confidence": 0.0,
+  "status": "no_face_detected",
+  "note": "No face was detected in the photo. Please choose your mood manually."
+}
+```
+
+---
 
 #### Error Responses
 - **`400 Bad Request`**: Uploaded file is not an image or is an empty file.
@@ -304,5 +375,11 @@ Uploads a user photo in-memory to estimate current facial expression. Images are
     "detail": "Invalid file format. Please upload a valid image file (JPEG, PNG, or WEBP)."
   }
   ```
-- **`500 Internal Server Error`**: Unexpected error during processing.
+  or
+  ```json
+  {
+    "detail": "The uploaded image file is empty. Please upload a valid image."
+  }
+  ```
+
 

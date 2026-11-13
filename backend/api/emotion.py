@@ -1,17 +1,20 @@
 """
 VibeShift - Emotion API Routes
 Accepts optional image upload to estimate facial expression emotion.
-Processes image in memory only and makes no medical claims.
+Integrates with backend.ai.predict via run_in_threadpool.
+Images are processed purely in-memory and never saved to disk.
 """
 
 import os
 from fastapi import APIRouter, File, UploadFile, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 
+from backend.ai import predict
 from schemas.emotion import EmotionResponse
 from services.emotion import (
-    analyze_image_emotion,
     ALLOWED_IMAGE_TYPES,
     ALLOWED_EXTENSIONS,
+    process_prediction_result,
 )
 
 router = APIRouter(prefix="/api/emotion", tags=["Emotion"])
@@ -23,16 +26,17 @@ router = APIRouter(prefix="/api/emotion", tags=["Emotion"])
     summary="Estimate emotion from facial photo",
     description=(
         "Analyzes an uploaded facial photo in-memory to estimate current mood. "
-        "Images are never saved to disk. Provides an estimate only with no medical or diagnostic claims."
+        "Images are never saved to disk. Returns null emotion if detection fails or expression is ambiguous."
     ),
 )
 async def estimate_emotion(file: UploadFile = File(...)):
     """
     POST /api/emotion
     Accepts an uploaded image file, safely validates the file format,
-    calls the emotion predictor (or temporary stub), and returns the estimation.
+    calls backend.ai.predict using run_in_threadpool in-memory,
+    maps facial expression to music mood, and returns the response safely.
     """
-    # 1. Check for provided filename and extension
+    # 1. Check filename and extension
     filename = file.filename or ""
     _, ext = os.path.splitext(filename.lower())
 
@@ -46,9 +50,9 @@ async def estimate_emotion(file: UploadFile = File(...)):
             detail="Invalid file format. Please upload a valid image file (JPEG, PNG, or WEBP).",
         )
 
-    # 3. Read image contents safely in-memory
+    # 3. Read image contents safely in-memory (never saved to disk)
     try:
-        contents = await file.read()
+        image_bytes = await file.read()
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -56,19 +60,24 @@ async def estimate_emotion(file: UploadFile = File(...)):
         )
 
     # 4. Validate non-empty image content
-    if not contents or len(contents) == 0:
+    if not image_bytes or len(image_bytes) == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The uploaded image file is empty. Please upload a valid image.",
         )
 
-    # 5. Process image with emotion service (never saves to disk)
+    # 5. Execute inference via run_in_threadpool with friendly error catching
     try:
-        result = analyze_image_emotion(contents)
-        return result
+        raw_result = await run_in_threadpool(predict, image_bytes)
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Emotion analysis encountered an unexpected error: {str(exc)}",
+        # Friendly error handling: no server crash, no stack trace exposed to user
+        return EmotionResponse(
+            emotion=None,
+            confidence=0.0,
+            status="error",
+            note="Emotion estimation encountered a temporary issue. Please choose your mood manually.",
         )
 
+    # 6. Map expression to mood and format the response
+    formatted_response = process_prediction_result(raw_result)
+    return EmotionResponse(**formatted_response)
