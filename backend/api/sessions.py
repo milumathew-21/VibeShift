@@ -113,7 +113,13 @@ def record_session_mood(
         INSERT INTO mood_records (session_id, mood, confidence, source, recorded_at)
         VALUES (?, ?, ?, ?, ?)
         """,
-        (id, mood_clean, payload.confidence or 1.0, source_clean, recorded_at),
+        (
+            id,
+            mood_clean,
+            1.0 if payload.confidence is None else payload.confidence,
+            source_clean,
+            recorded_at,
+        ),
     )
     conn.commit()
     conn.close()
@@ -123,7 +129,7 @@ def record_session_mood(
         "session_id": id,
         "mood": mood_clean,
         "source": source_clean,
-        "confidence": payload.confidence,
+        "confidence": 1.0 if payload.confidence is None else payload.confidence,
         "recorded_at": recorded_at,
     }
 
