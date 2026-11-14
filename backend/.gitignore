@@ -1,0 +1,28 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Environment variables and local settings
+.env
+.env.*
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded files and user images
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+
