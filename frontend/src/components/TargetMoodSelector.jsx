@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { MOODS, getMoodMeta } from '../config/constants';
 import MoodCard from './MoodCard';
@@ -8,74 +9,43 @@ export default function TargetMoodSelector({
   targetMood,
   onSelectTargetMood,
 }) {
-  const currentMeta = getMoodMeta(currentMood);
-  const targetMeta = getMoodMeta(targetMood);
-  const recommendedList = currentMeta?.recommendedTargets || [
-    'calm',
-    'happy',
-    'energetic',
-  ];
+  const currentMeta = currentMood ? getMoodMeta(currentMood) : null;
+  const targetMeta = targetMood ? getMoodMeta(targetMood) : null;
 
   return (
-    <div
-      className="glass-card"
-      style={{
-        marginTop: '1.35rem',
-        background: 'rgba(255, 255, 255, 0.88)',
-      }}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className="impact-target-mood-box"
       data-testid="target-mood-selector"
     >
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.75rem',
-          marginBottom: '1.25rem',
-        }}
-      >
+      <div className="impact-target-mood-head">
         <div>
-          <span className="eyebrow-pill" style={{ marginBottom: '0.5rem' }}>
+          <span className="eyebrow" style={{ marginBottom: '0.45rem' }}>
             <Sparkles size={13} />
-            <span>Target Mood Selection (Required for Change Mode)</span>
+            TARGET MOOD DESTINATION
           </span>
-          <h3 style={{ fontSize: '1.45rem' }}>
-            Which feeling would you like to move toward?
-          </h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Choose a supported VibeShift target mood below. Songs will be curated
-            to gently bridge your vibe.
+          <h4 className="impact-target-title">
+            Where would you like the music to take you?
+          </h4>
+          <p className="impact-target-sub">
+            Choose the target emotional state you want your playlist to build toward.
           </p>
         </div>
 
-        {currentMeta && (
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.55rem',
-              padding: '0.55rem 1rem',
-              borderRadius: '999px',
-              background: 'var(--bg-main)',
-              border: '1px solid var(--border-subtle)',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-            }}
-          >
-            <span>From: {currentMeta.label}</span>
-            <ArrowRight size={15} />
-            <span>
-              To: {targetMeta ? targetMeta.label : 'Select target mood'}
-            </span>
-          </div>
-        )}
+        <div className="impact-target-bridge-pill">
+          <span>{currentMeta ? currentMeta.label : 'Current'}</span>
+          <ArrowRight size={14} />
+          <strong>
+            {targetMeta ? targetMeta.label : 'Select Target Mood'}
+          </strong>
+        </div>
       </div>
 
-      <div className="mood-grid">
+      <div className="grid-3">
         {MOODS.map((mood) => {
-          const isRecommended =
-            recommendedList.includes(mood.id) && mood.id !== currentMood;
+          const isSameAsCurrent = mood.id === currentMood;
           return (
             <MoodCard
               key={mood.id}
@@ -83,12 +53,11 @@ export default function TargetMoodSelector({
               compact
               selected={targetMood === mood.id}
               onSelect={onSelectTargetMood}
-              recommendedBadge={isRecommended ? 'Gentle Bridge' : null}
+              badgeText={isSameAsCurrent ? 'Current Mood' : null}
             />
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 }
-

@@ -1,20 +1,22 @@
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  SmilePlus,
-  Compass,
-  Sparkles,
-  Sliders,
-  Disc3,
-  LineChart,
   ArrowRight,
-  RotateCcw,
-  Radio,
+  Compass,
+  Disc3,
+  Heart,
+  LineChart,
   Music2,
+  Play,
+  RefreshCw,
+  Sliders,
+  Sparkles,
+  Wand2,
 } from 'lucide-react';
 import { useVibeShift } from '../context/VibeShiftContext';
-import { getMoodMeta } from '../config/constants';
+import { MOODS, getMoodMeta } from '../config/constants';
+import MoodArtGraphic from '../components/MoodArtGraphic';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -25,431 +27,399 @@ export default function Dashboard() {
     targetMood,
     preferences,
     sessionId,
+    sessionCreatedAt,
     recommendations,
     journeyEntries,
-    setMoodMode,
-    resetFlow,
+    feedbackMap,
     apiMode,
+    selectMood,
+    changeMode,
+    resetSession,
   } = useVibeShift();
 
-  const currentMoodMeta = moodConfirmed ? getMoodMeta(currentMood) : null;
-  const targetMoodMeta = targetMood ? getMoodMeta(targetMood) : null;
+  const moodMeta = currentMood ? getMoodMeta(currentMood) : null;
+  const targetMeta = targetMood ? getMoodMeta(targetMood) : null;
 
-  const actions = [
+  const likedCount = Object.values(feedbackMap || {}).filter(
+    (act) => act === 'like'
+  ).length;
+
+  const dashboardActions = [
     {
       id: 'discover-mood',
+      kicker: '01 / CHECK-IN',
       title: 'Discover My Mood',
       description:
-        'Select how you feel right now manually or try an optional in-memory camera snapshot.',
-      icon: SmilePlus,
-      gradient: 'linear-gradient(135deg, #CDF7F3 0%, #C8F4E8 100%)',
-      onClick: () => navigate('/discover?step=1'),
-      cta: 'Choose Mood',
+        'Select your current feeling manually across six expressive mood states or use optional camera estimation.',
+      badge: currentMood ? `Selected: ${moodMeta.label}` : 'Start Here',
+      icon: Compass,
+      accentBg: '#DFF3A3',
+      accentText: '#171717',
+      pattern: 'sunburst',
+      onClick: () => navigate('/discover'),
     },
     {
       id: 'match-mood',
+      kicker: '02 / RESONANCE',
       title: 'Match My Mood',
       description:
-        'Find music that feels right for this moment and resonates with your current state.',
-      icon: Compass,
-      gradient: 'linear-gradient(135deg, #C8F4E8 0%, #A7E8DD 100%)',
+        'Stay with the feeling. Listen to songs that honour and mirror your present emotional atmosphere.',
+      badge: mode === 'match' ? 'Active Mode' : 'Stay With Feeling',
+      icon: Heart,
+      accentBg: '#3577D4',
+      accentText: '#FFFFFF',
+      pattern: 'waves',
       onClick: () => {
-        setMoodMode('match');
-        navigate('/discover?step=3');
+        changeMode('match');
+        navigate('/discover');
       },
-      cta: 'Set Match Mode',
     },
     {
       id: 'change-mood',
+      kicker: '03 / TRANSITION',
       title: 'Change My Mood',
       description:
-        'Choose the feeling you’d like to move toward and build a gentle musical bridge.',
-      icon: Sparkles,
-      gradient: 'linear-gradient(135deg, #F4CBD9 0%, #BFD6F5 100%)',
+        'Find a different vibe. Build an intentional musical bridge toward a calmer or brighter target state.',
+      badge:
+        mode === 'change' && targetMeta
+          ? `Target: ${targetMeta.label}`
+          : 'Shift Direction',
+      icon: Wand2,
+      accentBg: '#F3BDD0',
+      accentText: '#171717',
+      pattern: 'ripples',
       onClick: () => {
-        setMoodMode('change');
-        navigate('/discover?step=3');
+        changeMode('change');
+        navigate('/discover');
       },
-      cta: 'Set Change Mode',
     },
     {
-      id: 'personalize-music',
-      title: 'Personalize Music',
+      id: 'preferences',
+      kicker: '04 / CURATION',
+      title: 'Music Preferences',
       description:
-        'Filter by Malayalam, Hindi, English, or Tamil alongside your favorite genre and activity context.',
+        'Personalize language (English, Malayalam, Hindi, Tamil), genre, and activity context filters.',
+      badge: [
+        preferences.language || 'All Languages',
+        preferences.genre || 'Any Genre',
+      ].join(' • '),
       icon: Sliders,
-      gradient: 'linear-gradient(135deg, #BFD6F5 0%, #CDF7F3 100%)',
-      onClick: () => navigate('/discover?step=4'),
-      cta: 'Edit Preferences',
+      accentBg: '#F2F0DC',
+      accentText: '#171717',
+      pattern: 'grid',
+      onClick: () => navigate('/discover#preferences-section'),
     },
     {
-      id: 'explore-recommendations',
-      title: 'Explore Recommendations',
+      id: 'recommendations',
+      kicker: '05 / PLAYBACK',
+      title: 'My Recommendations',
       description:
-        'Open your adaptive soundtrack, listen via Spotify embeds, and record likes, skips, or replays.',
-      icon: Disc3,
-      gradient: 'linear-gradient(135deg, #CDF7F3 0%, #F4CBD9 100%)',
+        'Stream curated tracks via official Spotify Embeds or Demo Synth and refine with Like, Replay, or Skip.',
+      badge:
+        recommendations.length > 0
+          ? `${recommendations.length} Tracks Ready`
+          : 'Generate Playlist',
+      icon: Music2,
+      accentBg: '#171717',
+      accentText: '#DFF3A3',
+      pattern: 'vinyl',
       onClick: () => navigate('/recommendations'),
-      cta: 'View Playlist',
     },
     {
-      id: 'view-mood-journey',
-      title: 'View Mood Journey',
+      id: 'mood-journey',
+      kicker: '06 / JOURNAL',
+      title: 'Mood Journey',
       description:
-        'Explore the chronological timeline of categorical moods you’ve confirmed during your session.',
+        'Inspect your chronological session mood log and optional mood rechecks without fake sentiment scores.',
+      badge:
+        journeyEntries.length > 0
+          ? `${journeyEntries.length} Check-In${
+              journeyEntries.length === 1 ? '' : 's'
+            }`
+          : 'Session Timeline',
       icon: LineChart,
-      gradient: 'linear-gradient(135deg, #E8F4FA 0%, #C8F4E8 100%)',
+      accentBg: '#DFF3A3',
+      accentText: '#171717',
+      pattern: 'circles',
       onClick: () => navigate('/journey'),
-      cta: 'Open Timeline',
     },
   ];
 
   return (
-    <div data-testid="dashboard-page">
-      {/* Welcome Banner */}
-      <motion.section
-        className="glass-card"
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        style={{
-          padding: '2.4rem 2rem',
-          marginBottom: '2rem',
-          background: currentMoodMeta
-            ? currentMoodMeta.gradient
-            : 'linear-gradient(135deg, #CDF7F3 0%, #C8F4E8 36%, #BFD6F5 72%, #F4CBD9 100%)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1.25rem',
-          }}
-        >
-          <div>
-            <span
-              className="eyebrow-pill"
-              style={{ background: '#FFFFFF', marginBottom: '0.75rem' }}
-            >
-              <Radio size={14} />
-              <span>
-                Personal Listening Space ·{' '}
-                {apiMode === 'mock'
-                  ? 'Standalone Demo Mode'
-                  : 'Live Backend Mode'}
+    <div className="section impact-dashboard-page" data-testid="dashboard-page">
+      <div className="container">
+        {/* =================================================================
+            EDITORIAL HERO BANNER (SECTION 12)
+            ================================================================= */}
+        <div className="impact-dashboard-hero">
+          <div className="impact-dashboard-hero-copy">
+            <div className="impact-eyebrow-row" style={{ marginBottom: '0.85rem' }}>
+              <span className="eyebrow">
+                <Sparkles size={14} />
+                PERSONAL SOUNDTRACK HUB
               </span>
-            </span>
+              <span className="badge badge-neutral">
+                {apiMode === 'live' ? 'Live FastAPI Mode' : 'Standalone Demo Mode'}
+              </span>
+            </div>
 
-            <h1
-              style={{
-                fontSize: 'clamp(2.1rem, 4vw, 3.1rem)',
-                marginBottom: '0.35rem',
-              }}
-            >
-              Welcome to your space.
-            </h1>
-
-            <p
-              style={{
-                fontSize: '1.15rem',
-                color: 'var(--text-navy)',
-                opacity: 0.88,
-                fontWeight: 500,
-              }}
-            >
-              Every feeling deserves a soundtrack.
+            <h1 className="impact-page-title">What does today sound like?</h1>
+            <p className="impact-page-lead">
+              “Let’s find the soundtrack for this moment.”
             </p>
-          </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate('/discover')}
-            >
-              <SmilePlus size={18} />
-              <span>
-                {currentMoodMeta ? 'Update My Mood' : 'Discover My Mood'}
-              </span>
-            </button>
-
-            {(sessionId || currentMoodMeta) && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={resetFlow}
-                title="Clear current session state and start fresh"
-              >
-                <RotateCcw size={16} />
-                <span>Start Fresh Session</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Active Session Status OR Honest Empty State (Never fictional history) */}
-      <section style={{ marginBottom: '2.25rem' }} aria-label="Session Status">
-        {sessionId || currentMoodMeta ? (
-          <div className="glass-card" data-testid="dashboard-active-session">
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '1rem',
-                marginBottom: '1rem',
-              }}
-            >
-              <div>
-                <h2 style={{ fontSize: '1.4rem' }}>Current Session Snapshot</h2>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                  Your active choices are preserved as you move between pages.
-                </p>
-              </div>
-              {sessionId && (
-                <span className="eyebrow-pill">Session #{sessionId}</span>
-              )}
-            </div>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '0.9rem',
-              }}
-            >
-              <div
-                style={{
-                  padding: '1rem',
-                  borderRadius: '16px',
-                  background: '#FFFFFF',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div
-                  style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}
-                >
-                  Confirmed Mood
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '1.2rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  {currentMoodMeta ? currentMoodMeta.label : 'Not yet confirmed'}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '1rem',
-                  borderRadius: '16px',
-                  background: '#FFFFFF',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div
-                  style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}
-                >
-                  Vibe Direction
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '1.2rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  {mode === 'change'
-                    ? `Shift → ${targetMoodMeta ? targetMoodMeta.label : 'Pick Target'}`
-                    : 'Match My Mood'}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '1rem',
-                  borderRadius: '16px',
-                  background: '#FFFFFF',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div
-                  style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}
-                >
-                  Music Filters
-                </div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>
-                  {preferences.language || 'All Languages'} ·{' '}
-                  {preferences.genre || 'Any Genre'} ·{' '}
-                  {preferences.context || 'Any Context'}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '1rem',
-                  borderRadius: '16px',
-                  background: '#FFFFFF',
-                  border: '1px solid var(--border-subtle)',
-                }}
-              >
-                <div
-                  style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}
-                >
-                  Session Progress
-                </div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>
-                  {recommendations.length} Tracks · {journeyEntries.length}{' '}
-                  Check-in(s)
-                </div>
+            {/* Quick Mood Jump Chips */}
+            <div className="impact-dashboard-quick-moods">
+              <span className="impact-quick-mood-label">QUICK CHECK-IN:</span>
+              <div className="impact-quick-mood-row">
+                {MOODS.map((m) => {
+                  const active = currentMood === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        selectMood(m.id, {
+                          source: 'manual',
+                          confidence: 1.0,
+                          confirmed: false,
+                        });
+                        navigate('/discover');
+                      }}
+                      className={`impact-quick-mood-chip ${active ? 'active' : ''}`}
+                    >
+                      <span
+                        className="impact-dock-dot"
+                        style={{ background: m.orbColor }}
+                      />
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
-        ) : (
-          <div
-            className="glass-card"
-            data-testid="dashboard-empty-session"
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '1.25rem',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                maxWidth: '62ch',
-              }}
-            >
-              <div
-                style={{
-                  width: '52px',
-                  height: '52px',
-                  borderRadius: '16px',
-                  background: 'var(--gradient-glacier)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <Music2 size={24} color="#1F3149" />
-              </div>
-              <div>
-                <h2 style={{ fontSize: '1.3rem', marginBottom: '0.2rem' }}>
-                  No active listening session yet
-                </h2>
-                <p
-                  style={{
-                    fontSize: '0.92rem',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  You haven’t recorded a mood or started a session yet. Begin by
-                  choosing how you feel right now—your Mood Journey and
-                  recommendations will appear here as soon as you start.
-                </p>
-              </div>
-            </div>
 
-            <Link to="/discover" className="btn btn-primary">
-              <span>Begin Mood Discovery</span>
-              <ArrowRight size={17} />
-            </Link>
-          </div>
-        )}
-      </section>
-
-      {/* Six Interactive Action Cards */}
-      <section aria-labelledby="dashboard-actions-heading">
-        <div style={{ marginBottom: '1.35rem' }}>
-          <h2 id="dashboard-actions-heading" style={{ fontSize: '1.65rem' }}>
-            Where would you like to go?
-          </h2>
-          <p style={{ fontSize: '0.94rem', color: 'var(--text-secondary)' }}>
-            Jump directly to any step of the VibeShift experience.
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
-            gap: '1.25rem',
-          }}
-        >
-          {actions.map((item) => {
-            const Icon = item.icon;
-            return (
-              <article
-                key={item.id}
-                className="glass-card glass-card-interactive"
-                data-testid={`dashboard-action-${item.id}`}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: '1.1rem',
-                }}
-              >
+          <div className="impact-dashboard-hero-art">
+            <div className="impact-dashboard-art-card">
+              <MoodArtGraphic
+                pattern={moodMeta ? moodMeta.artworkTheme.pattern : 'sunburst'}
+                bg={moodMeta ? moodMeta.artworkTheme.bg : '#DFF3A3'}
+                fg={moodMeta ? moodMeta.artworkTheme.fg : '#171717'}
+                secondary={moodMeta ? moodMeta.artworkTheme.secondary : '#3577D4'}
+                tertiary="#FFFFFF"
+              />
+              <div className="impact-dashboard-art-caption">
                 <div>
-                  <div
-                    style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '15px',
-                      background: item.gradient,
-                      border: '1px solid rgba(31, 49, 73, 0.12)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '1rem',
-                    }}
-                  >
-                    <Icon size={22} color="#1F3149" />
+                  <div className="impact-art-caption-kicker">CURRENT ATMOSPHERE</div>
+                  <div className="impact-art-caption-title">
+                    {moodMeta
+                      ? `${moodMeta.label} — ${moodMeta.soundscapeTitle}`
+                      : 'Awaiting Your First Check-In'}
                   </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/discover')}
+                  className="btn btn-primary btn-sm"
+                >
+                  <Play size={13} />
+                  <span>{currentMood ? 'Update' : 'Begin'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-                  <h3 style={{ fontSize: '1.35rem', marginBottom: '0.35rem' }}>
-                    {item.title}
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: '0.9rem',
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
-                    {item.description}
+        {/* =================================================================
+            HONEST SESSION SNAPSHOT BANNER
+            ================================================================= */}
+        <section
+          aria-label="Current Listening Session Status"
+          style={{ marginBottom: '2.75rem' }}
+        >
+          {sessionId || currentMood ? (
+            <div
+              className="impact-session-banner impact-session-banner--active"
+              data-testid="dashboard-active-session"
+            >
+              <div className="impact-session-grid">
+                <div>
+                  <span className="impact-session-label">ACTIVE SESSION</span>
+                  <div className="impact-session-value">
+                    {sessionId ? `Session #${sessionId}` : 'Draft Check-In'}
+                  </div>
+                  {sessionCreatedAt && (
+                    <div className="impact-session-sub">
+                      Started {sessionCreatedAt}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <span className="impact-session-label">CURRENT MOOD</span>
+                  <div className="impact-session-value">
+                    {moodMeta ? moodMeta.label : 'Not Selected'}
+                    {moodConfirmed && (
+                      <span className="impact-confirmed-tag">Confirmed</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="impact-session-label">VIBE DIRECTION</span>
+                  <div className="impact-session-value">
+                    {mode === 'change'
+                      ? `Shift → ${targetMeta ? targetMeta.label : 'Choose Target'}`
+                      : 'Match My Mood'}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="impact-session-label">CURATED TRACKS</span>
+                  <div className="impact-session-value">
+                    {recommendations.length} Songs • {likedCount} Liked
+                  </div>
+                </div>
+              </div>
+
+              <div className="impact-session-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      recommendations.length > 0
+                        ? '/recommendations'
+                        : '/discover'
+                    )
+                  }
+                  className="btn btn-primary"
+                >
+                  <span>
+                    {recommendations.length > 0
+                      ? 'Resume Soundtrack'
+                      : 'Complete Setup'}
+                  </span>
+                  <ArrowRight size={16} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetSession}
+                  className="btn btn-secondary"
+                >
+                  <RefreshCw size={15} />
+                  <span>New Session</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="impact-session-banner impact-session-banner--empty"
+              data-testid="dashboard-empty-session"
+            >
+              <div className="impact-empty-session-info">
+                <span className="impact-empty-session-icon">
+                  <Disc3 size={24} color="#171717" />
+                </span>
+                <div>
+                  <h2 className="impact-empty-session-title">
+                    No active listening session yet
+                  </h2>
+                  <p className="impact-empty-session-desc">
+                    Your dashboard only displays real session check-ins and recommendations. Choose how you feel right now to start your first personalized session.
                   </p>
                 </div>
+              </div>
 
-                <div>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={item.onClick}
-                  >
-                    <span>{item.cta}</span>
-                    <ArrowRight size={15} />
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
+              <button
+                type="button"
+                onClick={() => navigate('/discover')}
+                className="btn btn-primary btn-lg"
+              >
+                <Compass size={18} />
+                <span>Start Mood Check-In</span>
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* =================================================================
+            6 EDITORIAL STUDIO ACTION CARDS
+            ================================================================= */}
+        <section aria-label="VibeShift Studio Modules">
+          <div className="impact-dashboard-section-head">
+            <h2 className="impact-section-subtitle">STUDIO MODULES</h2>
+            <span className="impact-section-meta">
+              6 INTEGRATED WORKFLOWS
+            </span>
+          </div>
+
+          <div className="grid-3">
+            {dashboardActions.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <motion.article
+                  key={item.id}
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: idx * 0.05 }}
+                  whileHover={{ y: -5 }}
+                  className="impact-module-card"
+                  onClick={item.onClick}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      item.onClick();
+                    }
+                  }}
+                  data-testid={`dashboard-action-${item.id}`}
+                >
+                  {/* Visual Artwork Header Strip */}
+                  <div className="impact-module-art-strip">
+                    <MoodArtGraphic
+                      pattern={item.pattern}
+                      bg={item.accentBg}
+                      fg={item.accentText}
+                      secondary="#3577D4"
+                      tertiary="#FFFFFF"
+                    />
+                    <span className="impact-module-kicker-pill">
+                      {item.kicker}
+                    </span>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="impact-module-body">
+                    <div className="impact-module-top-row">
+                      <span
+                        className="impact-module-icon"
+                        style={{
+                          background: item.accentBg,
+                          color: item.accentText,
+                        }}
+                      >
+                        <Icon size={18} />
+                      </span>
+                      <span className="badge badge-neutral">{item.badge}</span>
+                    </div>
+
+                    <h3 className="impact-module-title">{item.title}</h3>
+                    <p className="impact-module-desc">{item.description}</p>
+
+                    <div className="impact-module-cta">
+                      <span>Open Module</span>
+                      <ArrowRight size={15} />
+                    </div>
+                  </div>
+                </motion.article>
+              );
+            })}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
-

@@ -1,361 +1,279 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { Suspense, useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import {
-  Float,
-  MeshDistortMaterial,
-  Sphere,
-  Torus,
-  Sparkles,
-} from '@react-three/drei';
-import { Sparkles as SparklesIcon, Music2 } from 'lucide-react';
-import { MOODS, getMoodMeta } from '../config/constants';
-import { useReducedMotion } from '../hooks/useReducedMotion';
+import { Float, MeshDistortMaterial, Sphere, Torus } from '@react-three/drei';
+import { getMoodMeta } from '../config/constants';
 import { useWebGLSupport } from '../hooks/useWebGLSupport';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
-/**
- * Error boundary to safely catch any WebGL context losses without breaking the page
- */
-class WebGLErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
+function EditorialSonicSculpture({ moodMeta }) {
+  const coreRef = useRef();
+  const ringOneRef = useRef();
+  const ringTwoRef = useRef();
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
+  const speedMap = {
+    upbeat: 2.2,
+    serene: 1.0,
+    gentle: 0.75,
+    dynamic: 2.7,
+    grounded: 1.15,
+    balanced: 1.4,
+  };
 
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
+  const distortMap = {
+    upbeat: 0.36,
+    serene: 0.22,
+    gentle: 0.18,
+    dynamic: 0.44,
+    grounded: 0.25,
+    balanced: 0.28,
+  };
 
-/**
- * Inner 3D Scene rendered inside React Three Fiber <Canvas>
- */
-function IridescentOrbScene({ palette, lowPower, reducedMotion }) {
-  const coreRef = useRef(null);
-  const outerShellRef = useRef(null);
-  const ringOneRef = useRef(null);
-  const ringTwoRef = useRef(null);
-  const satelliteGroupRef = useRef(null);
-
-  const [primaryColor, secondaryColor, tertiaryColor] = palette;
+  const speed = speedMap[moodMeta.motionProfile] || 1.4;
+  const distort = distortMap[moodMeta.motionProfile] || 0.28;
 
   useFrame((state, delta) => {
-    if (reducedMotion) return;
-
-    const pointerX = state.pointer?.x || 0;
-    const pointerY = state.pointer?.y || 0;
-
+    const t = state.clock.getElapsedTime();
     if (coreRef.current) {
-      coreRef.current.rotation.y += delta * 0.28;
-      coreRef.current.rotation.x +=
-        (pointerY * 0.35 - coreRef.current.rotation.x) * 0.06;
-      coreRef.current.rotation.z +=
-        (pointerX * 0.35 - coreRef.current.rotation.z) * 0.06;
+      coreRef.current.rotation.y += delta * 0.28 * speed;
+      coreRef.current.rotation.x = Math.sin(t * 0.5) * 0.22;
     }
-
-    if (outerShellRef.current) {
-      outerShellRef.current.rotation.y -= delta * 0.16;
-      outerShellRef.current.rotation.x += delta * 0.12;
-    }
-
     if (ringOneRef.current) {
-      ringOneRef.current.rotation.z += delta * 0.22;
-      ringOneRef.current.rotation.x =
-        Math.PI * 0.36 + Math.sin(state.clock.elapsedTime * 0.5) * 0.08;
+      ringOneRef.current.rotation.z += delta * 0.2 * speed;
+      ringOneRef.current.rotation.x = Math.PI / 2.7 + Math.sin(t * 0.4) * 0.14;
     }
-
     if (ringTwoRef.current) {
-      ringTwoRef.current.rotation.y -= delta * 0.18;
-      ringTwoRef.current.rotation.z =
-        -Math.PI * 0.22 + Math.cos(state.clock.elapsedTime * 0.4) * 0.08;
-    }
-
-    if (satelliteGroupRef.current) {
-      satelliteGroupRef.current.rotation.y += delta * 0.32;
+      ringTwoRef.current.rotation.y -= delta * 0.16 * speed;
+      ringTwoRef.current.rotation.z = Math.cos(t * 0.35) * 0.2;
     }
   });
 
-  const segments = lowPower ? 32 : 64;
-
   return (
     <group>
-      <ambientLight intensity={1.15} color="#FFFFFF" />
-      <directionalLight
-        position={[4, 5, 4]}
-        intensity={1.6}
-        color={primaryColor}
-      />
-      <directionalLight
-        position={[-4, -3, 3]}
-        intensity={1.3}
-        color={tertiaryColor}
-      />
-      <pointLight position={[0, 3, 2]} intensity={1.1} color={secondaryColor} />
-
       <Float
-        speed={reducedMotion ? 0 : 1.8}
-        rotationIntensity={reducedMotion ? 0 : 0.35}
-        floatIntensity={reducedMotion ? 0 : 0.65}
+        speed={speed}
+        rotationIntensity={0.5}
+        floatIntensity={0.85}
+        floatingRange={[-0.12, 0.12]}
       >
-        {/* Main Iridescent Fluid Core */}
-        <Sphere ref={coreRef} args={[1.28, segments, segments]}>
+        {/* Central Organic Sonic Sphere */}
+        <Sphere ref={coreRef} args={[1.28, 64, 64]}>
           <MeshDistortMaterial
-            color={primaryColor}
-            emissive={secondaryColor}
-            emissiveIntensity={0.28}
-            roughness={0.14}
+            color={moodMeta.orbColor}
+            emissive={moodMeta.orbEmissive}
+            emissiveIntensity={0.32}
+            roughness={0.16}
             metalness={0.18}
-            clearcoat={1}
-            clearcoatRoughness={0.1}
-            distort={reducedMotion ? 0.12 : 0.36}
-            speed={reducedMotion ? 0 : 2.1}
+            distort={distort}
+            speed={speed * 1.15}
+            clearcoat={0.95}
+            clearcoatRoughness={0.12}
           />
         </Sphere>
 
-        {/* Translucent Aura Shell */}
-        <Sphere ref={outerShellRef} args={[1.52, 32, 32]}>
-          <meshPhysicalMaterial
-            color={tertiaryColor}
-            transparent
-            opacity={0.22}
-            roughness={0.08}
-            transmission={0.65}
-            thickness={0.8}
-          />
-        </Sphere>
-
-        {/* Harmonic Orbital Ring 1 */}
+        {/* Primary Vinyl / Acoustic Orbit Ring */}
         <Torus
           ref={ringOneRef}
-          args={[1.95, 0.022, 16, lowPower ? 64 : 110]}
-          rotation={[Math.PI * 0.36, 0.2, 0]}
+          args={[1.86, 0.032, 24, 120]}
+          rotation={[Math.PI / 2.6, 0.2, 0]}
         >
           <meshStandardMaterial
-            color="#1F3149"
-            emissive={primaryColor}
-            emissiveIntensity={0.45}
+            color="#171717"
+            roughness={0.25}
+            metalness={0.65}
             transparent
-            opacity={0.42}
+            opacity={0.78}
           />
         </Torus>
 
-        {/* Harmonic Orbital Ring 2 */}
+        {/* Secondary Accent Resonance Ring */}
         <Torus
           ref={ringTwoRef}
-          args={[2.25, 0.016, 16, lowPower ? 64 : 110]}
-          rotation={[Math.PI * 0.6, -0.35, 0.2]}
+          args={[2.16, 0.02, 16, 120]}
+          rotation={[Math.PI / 3.4, -0.45, 0.2]}
         >
           <meshStandardMaterial
-            color={tertiaryColor}
-            emissive={tertiaryColor}
-            emissiveIntensity={0.6}
+            color={moodMeta.orbSecondary || '#3577D4'}
+            emissive={moodMeta.orbSecondary || '#3577D4'}
+            emissiveIntensity={0.28}
             transparent
-            opacity={0.55}
+            opacity={0.62}
           />
         </Torus>
-
-        {/* Floating Music-Inspired Satellites */}
-        <group ref={satelliteGroupRef}>
-          <mesh position={[1.85, 0.55, 0.4]}>
-            <octahedronGeometry args={[0.14, 0]} />
-            <meshStandardMaterial
-              color="#FFFFFF"
-              emissive={primaryColor}
-              emissiveIntensity={0.6}
-              roughness={0.2}
-            />
-          </mesh>
-          <mesh position={[-1.75, -0.65, 0.55]}>
-            <icosahedronGeometry args={[0.12, 0]} />
-            <meshStandardMaterial
-              color={tertiaryColor}
-              emissive={tertiaryColor}
-              emissiveIntensity={0.5}
-              roughness={0.2}
-            />
-          </mesh>
-          <mesh position={[0.35, -1.85, -0.5]}>
-            <sphereGeometry args={[0.1, 16, 16]} />
-            <meshStandardMaterial
-              color={secondaryColor}
-              emissive={secondaryColor}
-              emissiveIntensity={0.6}
-            />
-          </mesh>
-        </group>
       </Float>
-
-      {!reducedMotion && (
-        <Sparkles
-          count={lowPower ? 24 : 48}
-          scale={4.8}
-          size={2.2}
-          speed={0.35}
-          opacity={0.65}
-          color="#1F3149"
-        />
-      )}
     </group>
   );
 }
 
-/**
- * Graceful Accessible Fallback when WebGL is unavailable or disabled
- */
-function OrbFallbackVisual({ moodMeta }) {
+export default function AnimatedMoodOrb({
+  mood = 'happy',
+  height = 380,
+  interactiveLabel = true,
+}) {
+  const webglSupported = useWebGLSupport();
+  const prefersReducedMotion = useReducedMotion();
+  const moodMeta = useMemo(() => getMoodMeta(mood), [mood]);
+
+  const showFallback = !webglSupported || prefersReducedMotion;
+
   return (
     <div
-      className="orb-fallback-scene"
-      role="img"
-      aria-label={`VibeShift mood orb tuned to ${moodMeta.label}`}
+      className="editorial-orb-stage"
       style={{
-        background: moodMeta.gradient,
+        position: 'relative',
+        width: '100%',
+        height: typeof height === 'number' ? `${height}px` : height,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
       }}
+      data-testid="animated-mood-orb"
+      aria-label={`Interactive 3D mood resonance sculpture representing ${moodMeta.label}`}
     >
+      {/* Editorial Studio Grid & Aura Backdrop */}
       <div
+        aria-hidden="true"
         style={{
-          textAlign: 'center',
-          padding: '1.25rem',
-          color: '#1F3149',
+          position: 'absolute',
+          inset: '8%',
+          borderRadius: '50%',
+          background: moodMeta.gradient,
+          filter: 'blur(38px)',
+          opacity: 0.85,
+          transition: 'background 0.6s ease',
+          pointerEvents: 'none',
         }}
-      >
-        <Music2 size={36} style={{ marginBottom: '0.4rem' }} />
+      />
+
+      {showFallback ? (
         <div
+          className="orb-fallback"
           style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '1.25rem',
-            fontWeight: 700,
+            position: 'relative',
+            zIndex: 2,
+            width: '230px',
+            height: '230px',
+            borderRadius: '50%',
+            background: moodMeta.gradient,
+            border: '2.5px solid #171717',
+            boxShadow: '10px 10px 0px #171717',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            padding: '1.35rem',
           }}
         >
-          {moodMeta.label} Aura
-        </div>
-        <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-          {moodMeta.tagline}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function AnimatedMoodOrb({
-  activeMood = 'calm',
-  onMoodPreviewChange,
-  interactivePreview = true,
-}) {
-  const prefersReducedMotion = useReducedMotion();
-  const { supported: webglSupported, checked, lowPower } = useWebGLSupport();
-  const [previewMood, setPreviewMood] = useState(activeMood || 'calm');
-
-  const effectiveMoodId = activeMood || previewMood || 'calm';
-  const moodMeta = useMemo(
-    () => getMoodMeta(effectiveMoodId) || MOODS[1],
-    [effectiveMoodId]
-  );
-
-  const handleChipClick = (id) => {
-    setPreviewMood(id);
-    if (onMoodPreviewChange) {
-      onMoodPreviewChange(id);
-    }
-  };
-
-  const fallbackNode = <OrbFallbackVisual moodMeta={moodMeta} />;
-
-  return (
-    <div
-      className="orb-stage-wrapper"
-      data-testid="animated-mood-orb"
-      aria-label="Interactive 3D Mood Resonance Orb"
-    >
-      <div className="orb-floating-badge orb-badge-top-left">
-        <SparklesIcon size={15} color="#175E57" />
-        <span>Resonance: {moodMeta.label}</span>
-      </div>
-
-      <div className="orb-canvas-container">
-        {checked && webglSupported ? (
-          <WebGLErrorBoundary fallback={fallbackNode}>
-            <Canvas
-              camera={{ position: [0, 0, 4.9], fov: 45 }}
-              dpr={lowPower ? [1, 1.25] : [1, 2]}
-              gl={{ antialias: true, alpha: true }}
-            >
-              <IridescentOrbScene
-                palette={moodMeta.orbPalette}
-                lowPower={lowPower}
-                reducedMotion={prefersReducedMotion}
-              />
-            </Canvas>
-          </WebGLErrorBoundary>
-        ) : (
-          <div
+          <span
             style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              color: '#171717',
+              background: '#FFFFFF',
+              padding: '0.2rem 0.55rem',
+              borderRadius: '999px',
+              border: '1.5px solid #171717',
             }}
           >
-            {fallbackNode}
-          </div>
-        )}
-      </div>
-
-      {interactivePreview && (
-        <div
-          className="orb-mood-switcher"
-          role="group"
-          aria-label="Preview mood color harmonies on 3D orb"
-        >
-          {MOODS.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => handleChipClick(m.id)}
-              className={`orb-mood-chip ${
-                effectiveMoodId === m.id ? 'active' : ''
-              }`}
-              aria-pressed={effectiveMoodId === m.id}
-            >
-              {m.label}
-            </button>
-          ))}
+            RESONANCE #{moodMeta.editorialNumber || '01'}
+          </span>
+          <strong
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.75rem',
+              color: '#171717',
+              marginTop: '0.45rem',
+              letterSpacing: '-0.03em',
+            }}
+          >
+            {moodMeta.label}
+          </strong>
+          <span
+            style={{
+              fontSize: '0.8rem',
+              color: '#171717',
+              opacity: 0.82,
+              marginTop: '0.25rem',
+              fontWeight: 600,
+            }}
+          >
+            {moodMeta.tagline}
+          </span>
         </div>
+      ) : (
+        <Suspense
+          fallback={
+            <div
+              style={{
+                width: '210px',
+                height: '210px',
+                borderRadius: '50%',
+                background: moodMeta.gradient,
+                border: '2px solid #171717',
+              }}
+            />
+          }
+        >
+          <Canvas
+            camera={{ position: [0, 0, 4.7], fov: 44 }}
+            dpr={[1, 1.75]}
+            style={{ position: 'relative', zIndex: 2 }}
+          >
+            <ambientLight intensity={1.35} />
+            <directionalLight
+              position={[4, 5, 4]}
+              intensity={1.7}
+              color="#FFFFFF"
+            />
+            <pointLight
+              position={[-4, -3, 3]}
+              intensity={1.25}
+              color={moodMeta.orbSecondary || '#3577D4'}
+            />
+            <EditorialSonicSculpture moodMeta={moodMeta} />
+          </Canvas>
+        </Suspense>
       )}
 
-      <div className="orb-floating-badge orb-badge-bottom-right">
-        <div className="waveform-strip" aria-hidden="true">
+      {interactiveLabel && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '14px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 3,
+            background: '#171717',
+            color: '#F8F8E9',
+            padding: '0.42rem 1rem',
+            borderRadius: '999px',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            letterSpacing: '0.03em',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            boxShadow: '0 10px 24px rgba(23, 23, 23, 0.18)',
+            whiteSpace: 'nowrap',
+          }}
+        >
           <span
-            className="waveform-bar"
-            style={{ height: '12px', animationDelay: '0s' }}
+            style={{
+              width: '9px',
+              height: '9px',
+              borderRadius: '50%',
+              background: moodMeta.orbColor,
+              display: 'inline-block',
+            }}
           />
-          <span
-            className="waveform-bar"
-            style={{ height: '22px', animationDelay: '0.2s' }}
-          />
-          <span
-            className="waveform-bar"
-            style={{ height: '16px', animationDelay: '0.4s' }}
-          />
-          <span
-            className="waveform-bar"
-            style={{ height: '24px', animationDelay: '0.1s' }}
-          />
-          <span
-            className="waveform-bar"
-            style={{ height: '14px', animationDelay: '0.3s' }}
-          />
+          <span>
+            3D Sonic Field: <strong>{moodMeta.label}</strong> — {moodMeta.soundscapeTitle}
+          </span>
         </div>
-        <span>3D Harmonic Field</span>
-      </div>
+      )}
     </div>
   );
 }
-

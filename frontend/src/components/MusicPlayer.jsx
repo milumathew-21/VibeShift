@@ -1,552 +1,244 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
+  AlertCircle,
   Disc3,
   ExternalLink,
-  SkipBack,
-  SkipForward,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  AlertTriangle,
-  Sparkles,
+  Headphones,
+  Music2,
   Radio,
 } from 'lucide-react';
-import { getMoodMeta, parseSpotifyTrackUrl } from '../config/constants';
+import { parseSpotifyTrackUrl, getMoodMeta } from '../config/constants';
 import { getDemoAmbientWavUrl } from '../mocks/ambientAudioGenerator';
-import FeedbackControls from './FeedbackControls';
+import MoodArtGraphic from './MoodArtGraphic';
 
-/**
- * VibeShift — Premium Music Player with Official Spotify Embed Integration
- * CRITICAL COMPLIANCE:
- * 1. Never passes a Spotify track URL (`https://open.spotify.com/track/...`) into an HTML <audio> tag.
- * 2. Validates Spotify track links via `parseSpotifyTrackUrl` and renders an official Spotify Embed iframe.
- * 3. Provides a prominent "Open in Spotify" link.
- * 4. Does not fabricate pause/seek/volume controls over the Spotify iframe.
- * 5. In Standalone Demo Mode (`apiMode === 'mock'`), optionally provides a clearly labelled
- *    "Demo Ambient Synth (HTML5 Audio)" mode using a royalty-free procedural WAV pad so evaluators
- *    can test genuine HTML5 <audio> play/pause/seek/volume/mute/replay controls.
- */
 export default function MusicPlayer({
   song,
-  apiMode = 'live',
-  feedbackState = {},
-  onFeedback,
-  onPrevTrack,
-  onNextTrack,
-  totalTracks = 0,
-  currentTrackIndex = 0,
-  replaySignal = 0,
+  apiMode = 'mock',
+  onNextSong,
+  onPrevSong,
 }) {
-  // 'spotify' | 'demo_synth'
   const [playerTab, setPlayerTab] = useState('spotify');
-  const [embedInstanceKey, setEmbedInstanceKey] = useState(0);
-
-  // Real HTML5 <audio> state (ONLY used for the royalty-free procedural WAV synth in Demo Mode)
-  const audioRef = useRef(null);
-  const [isPlayingSynth, setIsPlayingSynth] = useState(false);
-  const [synthCurrentTime, setSynthCurrentTime] = useState(0);
-  const [synthDuration, setSynthDuration] = useState(12);
-  const [synthVolume, setSynthVolume] = useState(0.75);
-  const [synthMuted, setSynthMuted] = useState(false);
-
-  const primaryMood = song?.mood_tags?.[0] || 'calm';
-  const moodMeta = getMoodMeta(primaryMood);
-  const spotifyInfo = parseSpotifyTrackUrl(song?.audio_url);
-
-  const demoWavUrl =
-    apiMode === 'mock' ? getDemoAmbientWavUrl(primaryMood, 12) : null;
-
-  // Reset synth state when switching tracks or leaving mock mode
-  useEffect(() => {
-    if (apiMode !== 'mock' && playerTab === 'demo_synth') {
-      setPlayerTab('spotify');
-    }
-  }, [apiMode, playerTab]);
 
   useEffect(() => {
-    setIsPlayingSynth(false);
-    setSynthCurrentTime(0);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    setPlayerTab('spotify');
   }, [song?.id]);
 
-  // Respond to Replay action honestly
-  useEffect(() => {
-    if (!replaySignal) return;
-    if (playerTab === 'demo_synth' && audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().then(() => setIsPlayingSynth(true)).catch(() => {});
-    } else if (playerTab === 'spotify') {
-      // Reload Spotify iframe cleanly so the user can restart from beginning
-      setEmbedInstanceKey((k) => k + 1);
-    }
-  }, [replaySignal, playerTab]);
+  const spotifyInfo = useMemo(
+    () => parseSpotifyTrackUrl(song?.audio_url),
+    [song?.audio_url]
+  );
+
+  const primaryMood = song?.mood_tags?.[0] || 'neutral';
+  const moodMeta = getMoodMeta(primaryMood);
+  const theme = moodMeta.artworkTheme || {
+    bg: '#DFF3A3',
+    fg: '#171717',
+    secondary: '#3577D4',
+    tertiary: '#FFFFFF',
+    pattern: 'sunburst',
+  };
+
+  const demoSynthUrl = useMemo(() => {
+    if (!song || apiMode !== 'mock') return null;
+    return getDemoAmbientWavUrl(primaryMood);
+  }, [song, apiMode, primaryMood]);
 
   if (!song) {
     return (
-      <aside
-        className="player-sticky-panel"
-        aria-label="Music Player Empty State"
-      >
-        <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-          <Disc3
-            size={42}
-            color="#1F3149"
-            style={{ marginBottom: '0.75rem', opacity: 0.65 }}
-          />
-          <h3 style={{ fontSize: '1.3rem', marginBottom: '0.35rem' }}>
-            No Track Selected
-          </h3>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Select any recommended track from your playlist to open the Spotify
-            player here.
-          </p>
-        </div>
+      <aside className="impact-player-card impact-player-card--empty">
+        <Headphones size={34} style={{ margin: '0 auto 0.75rem' }} />
+        <h3 className="impact-player-empty-title">No Track Selected</h3>
+        <p className="impact-player-empty-sub">
+          Choose any recommended track from your soundtrack to open the playback studio.
+        </p>
       </aside>
     );
   }
 
-  const toggleSynthPlay = () => {
-    if (!audioRef.current) return;
-    if (audioRef.current.paused) {
-      audioRef.current
-        .play()
-        .then(() => setIsPlayingSynth(true))
-        .catch(() => setIsPlayingSynth(false));
-    } else {
-      audioRef.current.pause();
-      setIsPlayingSynth(false);
-    }
-  };
-
-  const handleSynthSeek = (e) => {
-    const nextTime = Number(e.target.value);
-    setSynthCurrentTime(nextTime);
-    if (audioRef.current) {
-      audioRef.current.currentTime = nextTime;
-    }
-  };
-
-  const handleSynthVolume = (e) => {
-    const nextVol = Number(e.target.value);
-    setSynthVolume(nextVol);
-    if (audioRef.current) {
-      audioRef.current.volume = nextVol;
-      if (nextVol > 0 && synthMuted) {
-        audioRef.current.muted = false;
-        setSynthMuted(false);
-      }
-    }
-  };
-
-  const toggleSynthMute = () => {
-    if (!audioRef.current) return;
-    const nextMuted = !synthMuted;
-    audioRef.current.muted = nextMuted;
-    setSynthMuted(nextMuted);
-  };
-
-  const formatSec = (sec) => {
-    const s = Math.max(0, Math.floor(sec || 0));
-    const mins = Math.floor(s / 60);
-    const rem = String(s % 60).padStart(2, '0');
-    return `${mins}:${rem}`;
-  };
-
   return (
     <aside
-      className="player-sticky-panel"
+      className="impact-player-card"
+      aria-label={`Music Player: ${song.title}`}
       data-testid="music-player"
-      aria-label="Now Playing Music Player"
     >
-      {/* Top Header Strip */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.5rem',
-          marginBottom: '1.15rem',
-        }}
-      >
-        <span className="eyebrow-pill">
-          <Disc3 size={14} />
-          <span>
-            Now Playing · Track {currentTrackIndex + 1} of {totalTracks || 1}
-          </span>
+      {/* Top Studio Header */}
+      <div className="impact-player-top">
+        <span className="impact-player-studio-badge">
+          <Disc3 size={13} className="spin-slow" />
+          <span>NOW PLAYING STUDIO</span>
         </span>
-
-        {/* Recommendation Queue Navigation (kept distinct from Spotify internal controls) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={onPrevTrack}
-            disabled={totalTracks <= 1}
-            aria-label="Previous recommendation"
-            title="Previous recommendation in playlist"
-            style={{ padding: '0.4rem 0.65rem' }}
-          >
-            <SkipBack size={15} />
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={onNextTrack}
-            disabled={totalTracks <= 1}
-            aria-label="Next recommendation"
-            title="Next recommendation in playlist"
-            style={{ padding: '0.4rem 0.65rem' }}
-          >
-            <SkipForward size={15} />
-          </button>
-        </div>
-      </div>
-
-      {/* Track Hero Card */}
-      <div
-        style={{
-          padding: '1.25rem',
-          borderRadius: '20px',
-          background:
-            moodMeta?.gradient ||
-            'linear-gradient(135deg, #CDF7F3 0%, #BFD6F5 100%)',
-          border: '1px solid rgba(31, 49, 73, 0.12)',
-          marginBottom: '1.15rem',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-          }}
+        <span
+          className="impact-player-mood-tag"
+          style={{ background: moodMeta.pillColor, color: '#171717' }}
         >
-          <div
-            style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '16px',
-              background: 'rgba(255, 255, 255, 0.9)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: '0 8px 20px rgba(31, 49, 73, 0.1)',
-            }}
-          >
-            <Disc3 size={28} color="#1F3149" />
-          </div>
+          {moodMeta.label} Vibe
+        </span>
+      </div>
 
-          <div style={{ minWidth: 0 }}>
-            <h3
-              style={{
-                fontSize: '1.3rem',
-                marginBottom: '0.15rem',
-                wordBreak: 'break-word',
-              }}
-            >
-              {song.title}
-            </h3>
-            <p
-              style={{
-                fontSize: '0.92rem',
-                color: 'var(--text-navy)',
-                opacity: 0.85,
-                fontWeight: 500,
-              }}
-            >
-              {song.artist}
-            </p>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.35rem',
-                marginTop: '0.45rem',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  padding: '0.12rem 0.55rem',
-                  borderRadius: '999px',
-                  background: 'rgba(255, 255, 255, 0.88)',
-                }}
-              >
-                {song.language} · {song.genre}
-              </span>
-              {song.mood_tags?.map((tag) => (
-                <span
-                  key={tag}
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 600,
-                    padding: '0.12rem 0.55rem',
-                    borderRadius: '999px',
-                    background: 'rgba(255, 255, 255, 0.72)',
-                  }}
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
+      {/* Editorial Album Artwork Showcase */}
+      <div className="impact-player-artwork-stage">
+        <div className="impact-player-artwork-frame">
+          <MoodArtGraphic
+            pattern={theme.pattern}
+            bg={theme.bg}
+            fg={theme.fg}
+            secondary={theme.secondary}
+            tertiary={theme.tertiary}
+          />
+          <div className="impact-player-vinyl-disc" aria-hidden="true">
+            <span className="impact-player-vinyl-core" />
+          </div>
+        </div>
+
+        <div className="impact-player-song-meta">
+          <h3 className="impact-player-title">{song.title}</h3>
+          <p className="impact-player-artist">{song.artist}</p>
+          <div className="impact-player-badges">
+            {song.language && (
+              <span className="badge badge-neutral">{song.language}</span>
+            )}
+            {song.genre && (
+              <span className="badge badge-accent">{song.genre}</span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* In Demo Mode, allow switching between Official Spotify Embed and Local Royalty-Free Ambient Synth */}
+      {/* Mode Switcher if in Demo Mode */}
       {apiMode === 'mock' && (
         <div
-          style={{
-            display: 'flex',
-            gap: '0.4rem',
-            marginBottom: '1rem',
-            padding: '0.25rem',
-            borderRadius: '999px',
-            background: 'var(--bg-main)',
-            border: '1px solid var(--border-subtle)',
-          }}
           role="tablist"
-          aria-label="Playback Source Mode"
+          aria-label="Audio Source Mode"
+          className="impact-player-tabs"
         >
           <button
             type="button"
             role="tab"
             aria-selected={playerTab === 'spotify'}
             onClick={() => setPlayerTab('spotify')}
-            className={`mode-pill-btn ${
-              playerTab === 'spotify' ? 'active-live' : ''
+            className={`impact-player-tab ${
+              playerTab === 'spotify' ? 'active' : ''
             }`}
-            style={{ flex: 1, justifyContent: 'center' }}
           >
-            <Radio size={13} />
+            <Music2 size={13} />
             <span>Spotify Embed</span>
           </button>
+
           <button
             type="button"
             role="tab"
-            aria-selected={playerTab === 'demo_synth'}
-            onClick={() => setPlayerTab('demo_synth')}
-            className={`mode-pill-btn ${
-              playerTab === 'demo_synth' ? 'active-mock' : ''
+            aria-selected={playerTab === 'synth'}
+            onClick={() => setPlayerTab('synth')}
+            className={`impact-player-tab ${
+              playerTab === 'synth' ? 'active' : ''
             }`}
-            style={{ flex: 1, justifyContent: 'center' }}
           >
-            <Sparkles size={13} />
-            <span>Demo Ambient Synth (HTML5)</span>
+            <Radio size={13} />
+            <span>Demo Ambient Synth</span>
           </button>
         </div>
       )}
 
-      {/* TAB 1: Official Spotify Embed or Invalid Link Fallback */}
+      {/* Primary Spotify Embed or Invalid Link Fallback */}
       {playerTab === 'spotify' && (
-        <div>
+        <div className="impact-player-embed-area">
           {spotifyInfo.isValid ? (
-            <div>
+            <div
+              className="spotify-embed-wrapper"
+              data-testid="spotify-embed-container"
+            >
               <iframe
-                key={`${spotifyInfo.trackId}-${embedInstanceKey}`}
-                title={`Spotify Embed Player for ${song.title}`}
+                key={spotifyInfo.trackId}
+                title={`Spotify Embed: ${song.title} by ${song.artist}`}
                 src={spotifyInfo.embedUrl}
                 width="100%"
                 height="152"
+                frameBorder="0"
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy"
-                className="spotify-embed-frame"
+                style={{ display: 'block', borderRadius: '14px' }}
                 data-testid="spotify-embed-iframe"
               />
-              <p
-                style={{
-                  fontSize: '0.76rem',
-                  color: 'var(--text-secondary)',
-                  marginTop: '0.55rem',
-                  lineHeight: 1.45,
-                }}
-              >
-                Playback is powered directly by Spotify’s official embed player.
-                Full-track vs. preview playback depends on your Spotify login
-                status in this browser.
-              </p>
             </div>
           ) : (
             <div
-              className="alert-banner warning"
+              className="impact-player-fallback"
               data-testid="spotify-invalid-fallback"
-              style={{ flexDirection: 'column', gap: '0.5rem' }}
             >
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                <AlertTriangle size={18} color="#783652" />
-                <strong>Spotify Embed Unavailable for This Link</strong>
+              <div className="impact-player-fallback-head">
+                <AlertCircle size={17} />
+                <span>Embedded preview unavailable for this link</span>
               </div>
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                The track URL (<code>{song.audio_url || 'none'}</code>) is a
-                placeholder or non-standard link, so VibeShift will not render a
-                broken player or fake audio playback.
+              <p className="impact-player-fallback-sub">
+                This song uses a external or non-embeddable track reference. Use the external link below or switch to the Demo Ambient Synth tab.
               </p>
             </div>
           )}
 
-          {/* External Open in Spotify CTA */}
-          {spotifyInfo.isValid && (
-            <div style={{ marginTop: '0.9rem' }}>
+          {/* Direct Open in Spotify Action */}
+          {spotifyInfo.openUrl && (
+            <div style={{ marginTop: '0.85rem' }}>
               <a
-                href={spotifyInfo.externalUrl}
+                href={spotifyInfo.openUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-secondary"
                 style={{ width: '100%' }}
                 data-testid="open-in-spotify-link"
               >
-                <ExternalLink size={16} />
                 <span>Open in Spotify</span>
+                <ExternalLink size={15} />
               </a>
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 2: Royalty-Free Procedural WAV Synth (Strictly for Demo Mode HTML5 Audio Verification) */}
-      {playerTab === 'demo_synth' && apiMode === 'mock' && demoWavUrl && (
+      {/* Demo Mode HTML5 Audio Synthesizer Fallback */}
+      {apiMode === 'mock' && playerTab === 'synth' && demoSynthUrl && (
         <div
-          style={{
-            padding: '1.1rem',
-            borderRadius: '18px',
-            background: 'var(--bg-main)',
-            border: '1px solid var(--border-subtle)',
-          }}
+          className="impact-player-synth-panel"
           data-testid="demo-html5-audio-panel"
         >
-          <div
-            style={{
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              color: '#783652',
-              marginBottom: '0.65rem',
-            }}
-          >
-            Royalty-Free Mood Harmonic Pad ({moodMeta?.label || 'Calm'} Chords) —
-            Real HTML5 Audio Controls
-          </div>
-
-          <audio
-            ref={audioRef}
-            src={demoWavUrl}
-            onTimeUpdate={() =>
-              setSynthCurrentTime(audioRef.current?.currentTime || 0)
-            }
-            onLoadedMetadata={() =>
-              setSynthDuration(audioRef.current?.duration || 12)
-            }
-            onEnded={() => setIsPlayingSynth(false)}
-          />
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              marginBottom: '0.75rem',
-            }}
-          >
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={toggleSynthPlay}
-              aria-label={isPlayingSynth ? 'Pause demo synth' : 'Play demo synth'}
-            >
-              {isPlayingSynth ? <Pause size={15} /> : <Play size={15} />}
-              <span>{isPlayingSynth ? 'Pause' : 'Play'}</span>
-            </button>
-
-            <input
-              type="range"
-              min="0"
-              max={synthDuration || 12}
-              step="0.1"
-              value={synthCurrentTime}
-              onChange={handleSynthSeek}
-              aria-label="Seek demo audio position"
-              style={{ flex: 1 }}
-            />
-
-            <span
-              style={{
-                fontSize: '0.76rem',
-                fontFamily: 'var(--font-tech)',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              {formatSec(synthCurrentTime)} / {formatSec(synthDuration)}
+          <div className="impact-player-synth-head">
+            <Radio size={15} />
+            <span>
+              Demo Ambient Harmonic Preview ({moodMeta.label} Chord Progression)
             </span>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={toggleSynthMute}
-              aria-label={synthMuted ? 'Unmute demo synth' : 'Mute demo synth'}
-              style={{ padding: '0.3rem 0.5rem' }}
-            >
-              {synthMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={synthMuted ? 0 : synthVolume}
-              onChange={handleSynthVolume}
-              aria-label="Demo audio volume"
-              style={{ width: '110px' }}
-            />
-          </div>
+          <p className="impact-player-synth-desc">
+            Synthesized locally in your browser so you can test HTML5 audio controls offline in Demo Mode.
+          </p>
+          <audio
+            key={`${song.id}-${primaryMood}`}
+            controls
+            src={demoSynthUrl}
+            style={{ width: '100%', height: '38px' }}
+          >
+            Your browser does not support the HTML5 audio element.
+          </audio>
         </div>
       )}
 
-      {/* Feedback Bar inside Now Playing Panel */}
-      <div
-        style={{
-          marginTop: '1.25rem',
-          paddingTop: '1.1rem',
-          borderTop: '1px solid var(--border-subtle)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.6rem',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-          }}
+      {/* Previous / Next Track Navigation */}
+      <div className="impact-player-nav-row">
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={onPrevSong}
+          style={{ flex: 1 }}
         >
-          <span
-            style={{
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: 'var(--text-secondary)',
-            }}
-          >
-            Track Feedback:
-          </span>
-          <FeedbackControls
-            songId={song.id}
-            feedbackState={feedbackState}
-            onFeedback={onFeedback}
-          />
-        </div>
+          ← Previous Track
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={onNextSong}
+          style={{ flex: 1 }}
+        >
+          Next Track →
+        </button>
       </div>
     </aside>
   );
 }
-

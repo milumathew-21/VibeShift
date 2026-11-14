@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import {
-  Sparkles,
-  LayoutDashboard,
-  SmilePlus,
+  Compass,
   Disc3,
+  LayoutDashboard,
   LineChart,
   Menu,
-  X,
+  Music2,
   Radio,
-  FlaskConical,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { useVibeShift } from '../context/VibeShiftContext';
 import { getMoodMeta } from '../config/constants';
@@ -17,169 +17,147 @@ import { getMoodMeta } from '../config/constants';
 const NAV_ITEMS = [
   { to: '/', label: 'Home', icon: Sparkles, end: true },
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/discover', label: 'Discover Mood', icon: SmilePlus },
-  { to: '/recommendations', label: 'Recommendations', icon: Disc3 },
+  { to: '/discover', label: 'Mood & Vibe', icon: Compass },
+  { to: '/recommendations', label: 'Recommendations', icon: Music2 },
   { to: '/journey', label: 'Mood Journey', icon: LineChart },
 ];
 
 export default function Navigation() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const {
     apiMode,
-    switchApiMode,
-    backendStatus,
+    toggleApiMode,
     currentMood,
     moodConfirmed,
     sessionId,
   } = useVibeShift();
 
-  const confirmedMoodMeta = moodConfirmed ? getMoodMeta(currentMood) : null;
-
-  const closeMobileMenu = () => setMobileMenuOpen(false);
+  const moodMeta = currentMood ? getMoodMeta(currentMood) : null;
 
   return (
-    <header className="nav-header" role="banner">
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-
-      <div className="nav-container">
+    <header className="nav-header">
+      <div className="container nav-inner">
         <Link
           to="/"
-          className="brand-link"
-          onClick={closeMobileMenu}
+          className="nav-brand"
           aria-label="VibeShift Home"
+          onClick={() => setMobileOpen(false)}
         >
-          <span className="brand-orb-mark" aria-hidden="true">
-            <Sparkles size={18} color="#1F3149" />
+          <span className="nav-brand-orb" aria-hidden="true">
+            <Disc3 size={18} color="#DFF3A3" />
           </span>
-          <span className="brand-name">VibeShift</span>
-          <span className="brand-tag">Adaptive Audio</span>
+          <span>VibeShift</span>
+          <span className="nav-brand-tag">STUDIO</span>
         </Link>
 
-        <nav className="nav-links-desktop" aria-label="Primary Navigation">
-          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                `nav-item-link ${isActive ? 'active' : ''}`
-              }
-            >
-              <Icon size={16} aria-hidden="true" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+        <nav className="nav-links" aria-label="Primary Navigation">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `nav-link ${isActive ? 'active' : ''}`
+                }
+              >
+                <Icon size={15} />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="nav-actions">
-          {confirmedMoodMeta && (
+          {moodMeta && (
             <Link
               to="/discover"
-              className="eyebrow-pill"
+              className="mood-pill"
               style={{
-                background: confirmedMoodMeta.badgeBg,
-                borderColor: confirmedMoodMeta.borderAccent,
-                textDecoration: 'none',
-                padding: '0.32rem 0.78rem',
+                background: moodMeta.pillColor,
+                color: '#171717',
+                borderColor: '#171717',
               }}
-              title="Current confirmed mood — click to update"
-            >
-              <span
-                className="status-dot"
-                style={{ background: confirmedMoodMeta.accentColor }}
-              />
-              <span>Mood: {confirmedMoodMeta.label}</span>
-              {sessionId ? (
-                <span style={{ opacity: 0.72 }}>· #{sessionId}</span>
-              ) : null}
-            </Link>
-          )}
-
-          <div
-            className="mode-toggle-group"
-            role="group"
-            aria-label="API Connection Mode"
-          >
-            <button
-              type="button"
-              onClick={() => switchApiMode('live')}
-              className={`mode-pill-btn ${
-                apiMode === 'live' ? 'active-live' : ''
-              }`}
-              aria-pressed={apiMode === 'live'}
               title={
-                backendStatus === 'online'
-                  ? 'Connected to live FastAPI backend at 127.0.0.1:8000'
-                  : 'Live API mode selected (FastAPI backend currently unreachable)'
+                moodConfirmed
+                  ? `Confirmed mood: ${moodMeta.label}`
+                  : `Selected mood: ${moodMeta.label}`
               }
             >
               <span
-                className={`status-dot ${
-                  backendStatus === 'online' ? 'online' : 'offline'
-                }`}
+                className="status-dot"
+                style={{ background: '#171717' }}
               />
-              <Radio size={13} aria-hidden="true" />
-              <span>Live API</span>
-            </button>
+              <span>
+                {moodMeta.label}
+                {moodConfirmed ? ' ✓' : ''}
+              </span>
+            </Link>
+          )}
 
-            <button
-              type="button"
-              onClick={() => switchApiMode('mock')}
-              className={`mode-pill-btn ${
-                apiMode === 'mock' ? 'active-mock' : ''
-              }`}
-              aria-pressed={apiMode === 'mock'}
-              title="Standalone Demo Mode — deterministic offline showcase"
+          {sessionId && (
+            <span
+              className="badge badge-neutral"
+              title="Active backend or demo session ID"
             >
-              <span className="status-dot mock" />
-              <FlaskConical size={13} aria-hidden="true" />
-              <span>Demo Mode</span>
-            </button>
-          </div>
+              Session #{sessionId}
+            </span>
+          )}
 
           <button
             type="button"
-            className="mobile-menu-btn"
-            onClick={() => setMobileMenuOpen((o) => !o)}
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-navigation-drawer"
-            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            className="api-mode-pill"
+            onClick={() =>
+              toggleApiMode(apiMode === 'live' ? 'mock' : 'live')
+            }
+            aria-label={`Current mode: ${
+              apiMode === 'live' ? 'Live FastAPI' : 'Demo Mode'
+            }. Click to switch.`}
+            title="Switch between Standalone Demo Catalogue and Live FastAPI Server"
           >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            <span
+              className={`status-dot ${apiMode === 'live' ? 'live' : 'mock'}`}
+            />
+            <Radio size={13} />
+            <span>{apiMode === 'live' ? 'Live API' : 'Demo Mode'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="nav-mobile-toggle"
+            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((prev) => !prev)}
+          >
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </div>
 
-      {mobileMenuOpen && (
-        <nav
-          id="mobile-navigation-drawer"
-          className="mobile-nav-drawer"
-          aria-label="Mobile Navigation"
-        >
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-            const isActive =
-              to === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(to);
-            return (
-              <Link
-                key={to}
-                to={to}
-                onClick={closeMobileMenu}
-                className={`nav-item-link ${isActive ? 'active' : ''}`}
-                style={{ width: '100%', justifyContent: 'flex-start' }}
-              >
-                <Icon size={18} aria-hidden="true" />
-                <span>{label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+      {mobileOpen && (
+        <div className="container">
+          <nav className="nav-mobile-drawer" aria-label="Mobile Navigation">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={() => setMobileOpen(false)}
+                  className={({ isActive }) =>
+                    `nav-link ${isActive ? 'active' : ''}`
+                  }
+                >
+                  <Icon size={16} />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
       )}
     </header>
   );
 }
-

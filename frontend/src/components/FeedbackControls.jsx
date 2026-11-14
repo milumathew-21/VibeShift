@@ -1,82 +1,66 @@
-import React, { useState } from 'react';
-import { Heart, SkipForward, RotateCcw } from 'lucide-react';
+import React from 'react';
+import { Heart, RotateCcw, SkipForward } from 'lucide-react';
 
 export default function FeedbackControls({
   songId,
-  feedbackState = {},
+  activeAction = null,
   onFeedback,
-  compact = false,
+  disabled = false,
 }) {
-  const [busyAction, setBusyAction] = useState(null);
-  const { liked = false, replayCount = 0 } = feedbackState;
-
-  const handleAction = async (action) => {
-    if (!onFeedback || busyAction) return;
-    setBusyAction(action);
-    try {
-      await onFeedback(songId, action);
-    } catch {
-      // Handled in context status banner
-    } finally {
-      setBusyAction(null);
-    }
-  };
-
   return (
     <div
-      className="feedback-bar"
+      className="feedback-row impact-feedback-row"
       role="group"
-      aria-label="Song feedback actions"
+      aria-label="Track feedback controls"
+      onClick={(e) => e.stopPropagation()}
     >
       <button
         type="button"
-        onClick={() => handleAction('like')}
-        disabled={Boolean(busyAction)}
-        className={`feedback-btn ${liked ? 'liked' : ''}`}
-        aria-pressed={liked}
+        disabled={disabled}
+        onClick={() => onFeedback(songId, 'like')}
+        className={`feedback-btn impact-fb-btn ${
+          activeAction === 'like' ? 'active-like' : ''
+        }`}
+        aria-pressed={activeAction === 'like'}
+        title="Like this song"
         data-testid={`feedback-like-${songId}`}
-        title="Like this song (boosts recommendation weight)"
       >
         <Heart
-          size={15}
-          fill={liked ? '#783652' : 'none'}
-          aria-hidden="true"
+          size={14}
+          fill={activeAction === 'like' ? 'currentColor' : 'none'}
         />
-        <span>{liked ? 'Liked' : 'Like'}</span>
+        <span>Like</span>
       </button>
 
       <button
         type="button"
-        onClick={() => handleAction('replay')}
-        disabled={Boolean(busyAction)}
-        className={`feedback-btn ${replayCount > 0 ? 'replayed' : ''}`}
+        disabled={disabled}
+        onClick={() => onFeedback(songId, 'replay')}
+        className={`feedback-btn impact-fb-btn ${
+          activeAction === 'replay' ? 'active-replay' : ''
+        }`}
+        aria-pressed={activeAction === 'replay'}
+        title="Mark song for replay"
         data-testid={`feedback-replay-${songId}`}
-        title="Record replay and focus track"
       >
-        <RotateCcw size={15} aria-hidden="true" />
-        <span>
-          {compact
-            ? replayCount > 0
-              ? `${replayCount}`
-              : 'Replay'
-            : replayCount > 0
-            ? `Replay (${replayCount})`
-            : 'Replay'}
-        </span>
+        <RotateCcw size={14} />
+        <span>Replay</span>
       </button>
 
       <button
         type="button"
-        onClick={() => handleAction('skip')}
-        disabled={Boolean(busyAction)}
-        className="feedback-btn"
+        disabled={disabled}
+        onClick={() => onFeedback(songId, 'skip')}
+        className={`feedback-btn impact-fb-btn ${
+          activeAction === 'skip' ? 'active-skip' : ''
+        }`}
+        aria-pressed={activeAction === 'skip'}
+        title="Skip this song and advance to next"
         data-testid={`feedback-skip-${songId}`}
-        title="Skip song and move to next recommendation"
       >
-        <SkipForward size={15} aria-hidden="true" />
+        <SkipForward size={14} />
         <span>Skip</span>
       </button>
     </div>
   );
 }
-

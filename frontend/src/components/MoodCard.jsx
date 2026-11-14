@@ -1,19 +1,19 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import {
-  Sun,
-  Feather,
+  Check,
   CloudRain,
-  Zap,
-  Flame,
   Compass,
-  CheckCircle2,
-  Camera,
-  Hand,
+  Flame,
+  Sun,
+  Wind,
+  Zap,
 } from 'lucide-react';
+import MoodArtGraphic from './MoodArtGraphic';
 
 const ICON_MAP = {
   Sun,
-  Feather,
+  Wind,
   CloudRain,
   Zap,
   Flame,
@@ -24,139 +24,100 @@ export default function MoodCard({
   mood,
   selected = false,
   onSelect,
+  disabled = false,
   compact = false,
-  recommendedBadge = null,
+  badgeText = null,
 }) {
-  const IconComponent = ICON_MAP[mood.icon] || Sun;
+  const Icon = ICON_MAP[mood.iconName] || Compass;
+
+  // Gentle, non-jarring hover motion for sad or angry states
+  const isGentleMood = mood.id === 'sad' || mood.id === 'angry';
+  const theme = mood.artworkTheme || {
+    bg: '#DFF3A3',
+    fg: '#171717',
+    secondary: '#3577D4',
+    tertiary: '#FFFFFF',
+    pattern: 'sunburst',
+  };
 
   return (
-    <button
+    <motion.button
       type="button"
-      onClick={() => onSelect(mood.id)}
-      className={`mood-card ${selected ? 'selected' : ''}`}
+      disabled={disabled}
+      onClick={() => !disabled && onSelect(mood.id)}
+      whileHover={
+        disabled
+          ? {}
+          : {
+              y: isGentleMood ? -3 : -6,
+              scale: isGentleMood ? 1.005 : 1.015,
+            }
+      }
+      whileTap={disabled ? {} : { scale: 0.99 }}
+      transition={{
+        duration: isGentleMood ? 0.42 : 0.24,
+        ease: 'easeOut',
+      }}
+      className={`mood-card impact-mood-tile ${selected ? 'selected' : ''} ${
+        compact ? 'impact-mood-tile--compact' : ''
+      }`}
       aria-pressed={selected}
       data-testid={`mood-card-${mood.id}`}
-      style={{
-        background: selected
-          ? mood.gradient
-          : `linear-gradient(160deg, rgba(255,255,255,0.94) 0%, ${mood.surfaceTint} 100%)`,
-        padding: compact ? '1.15rem' : '1.55rem',
-      }}
     >
+      {/* Editorial Artwork Banner */}
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-        }}
+        className="impact-mood-tile-art"
+        style={{ height: compact ? '96px' : '128px' }}
       >
-        <div
-          className="mood-card-icon-wrap"
-          style={{
-            background: selected ? '#FFFFFF' : mood.gradient,
-          }}
-          aria-hidden="true"
-        >
-          <IconComponent size={compact ? 20 : 24} color="#1F3149" />
-        </div>
+        <MoodArtGraphic
+          pattern={theme.pattern}
+          bg={theme.bg}
+          fg={theme.fg}
+          secondary={theme.secondary}
+          tertiary={theme.tertiary}
+        />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          {recommendedBadge && (
-            <span
-              className="eyebrow-pill"
-              style={{
-                padding: '0.2rem 0.6rem',
-                fontSize: '0.68rem',
-                background: '#FFFFFF',
-              }}
-            >
-              {recommendedBadge}
-            </span>
-          )}
+        <div className="impact-mood-tile-art-top">
+          <span className="impact-mood-edition">
+            #{mood.editorialNumber || '01'} • {mood.soundscapeTitle}
+          </span>
           {selected && (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: '#1F3149',
-                background: 'rgba(255, 255, 255, 0.88)',
-                padding: '0.24rem 0.65rem',
-                borderRadius: '999px',
-              }}
-            >
-              <CheckCircle2 size={15} />
+            <span className="impact-mood-selected-check">
+              <Check size={13} strokeWidth={3} />
               <span>Selected</span>
             </span>
           )}
         </div>
       </div>
 
-      <div>
-        <div
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: compact ? '1.2rem' : '1.4rem',
-            fontWeight: 600,
-            color: '#1F3149',
-            marginBottom: '0.15rem',
-          }}
-        >
-          {mood.label}
-        </div>
-        <div
-          style={{
-            fontSize: '0.84rem',
-            fontWeight: 600,
-            color: mood.accentColor,
-          }}
-        >
-          {mood.tagline}
-        </div>
-      </div>
+      {/* Editorial Copy Block */}
+      <div className="impact-mood-tile-body">
+        <div className="impact-mood-tile-title-row">
+          <div className="impact-mood-tile-heading">
+            <span
+              className="impact-mood-icon-box"
+              style={{
+                background: mood.pillColor,
+                color: '#171717',
+              }}
+            >
+              <Icon size={17} />
+            </span>
+            <div>
+              <h3 className="impact-mood-name">{mood.label}</h3>
+              <div className="impact-mood-tagline">{mood.tagline}</div>
+            </div>
+          </div>
 
-      {!compact && (
-        <p
-          style={{
-            fontSize: '0.88rem',
-            color: 'var(--text-secondary)',
-            lineHeight: 1.55,
-          }}
-        >
-          {mood.description}
-        </p>
-      )}
-
-      {!compact && (
-        <div
-          style={{
-            marginTop: 'auto',
-            paddingTop: '0.6rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            fontSize: '0.74rem',
-            color: 'var(--text-secondary)',
-            fontWeight: 500,
-          }}
-        >
-          {mood.cameraMapped ? (
-            <>
-              <Camera size={13} aria-hidden="true" />
-              <span>Camera or manual choice</span>
-            </>
-          ) : (
-            <>
-              <Hand size={13} aria-hidden="true" />
-              <span>Musical mood · Manual choice</span>
-            </>
+          {badgeText && (
+            <span className="badge badge-neutral">{badgeText}</span>
           )}
         </div>
-      )}
-    </button>
+
+        {!compact && (
+          <p className="impact-mood-description">{mood.description}</p>
+        )}
+      </div>
+    </motion.button>
   );
 }
-

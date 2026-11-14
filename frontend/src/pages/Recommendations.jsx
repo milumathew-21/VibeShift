@@ -1,512 +1,503 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import {
+  AlertCircle,
+  ArrowLeft,
+  Compass,
   Disc3,
+  ExternalLink,
+  LineChart,
+  Music2,
+  Play,
   RefreshCw,
   Sliders,
-  SmilePlus,
-  LineChart,
-  AlertCircle,
   Sparkles,
-  FlaskConical,
-  ArrowRight,
-  CheckCircle2,
 } from 'lucide-react';
 import { useVibeShift } from '../context/VibeShiftContext';
-import {
-  getMoodMeta,
-  CONTEXTS,
-  ETHICAL_DISCLAIMERS,
-} from '../config/constants';
+import { getMoodMeta, parseSpotifyTrackUrl } from '../config/constants';
 import PlaylistCard from '../components/PlaylistCard';
 import MusicPlayer from '../components/MusicPlayer';
 import MoodRecheckPanel from '../components/MoodRecheckPanel';
+import FeedbackControls from '../components/FeedbackControls';
+import MoodArtGraphic from '../components/MoodArtGraphic';
 
 export default function Recommendations() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     apiMode,
-    switchApiMode,
     currentMood,
-    selectedMoodDraft,
     mode,
     targetMood,
     preferences,
     sessionId,
     recommendations,
-    recommendationsLoading,
-    recommendationsError,
     activeSong,
-    activeSongId,
-    setActiveSongId,
-    selectNextSong,
-    selectPrevSong,
-    startSessionAndFetchRecommendations,
-    refreshRecommendations,
-    feedbackBySong,
-    feedbackStatus,
-    setFeedbackStatus,
-    replayTriggerCount,
-    recordSongInteraction,
-    submitMoodRecheck,
+    setActiveSong,
+    isLoadingRecommendations,
+    recommendationError,
+    feedbackMap,
+    feedbackToast,
+    selectMood,
+    startOrUpdateListeningFlow,
+    handleSongFeedback,
+    performMoodRecheck,
   } = useVibeShift();
 
-  const [recheckOpen, setRecheckOpen] = useState(false);
+  const [showRecheck, setShowRecheck] = useState(false);
 
-  const effectiveMood = currentMood || selectedMoodDraft;
-  const currentMoodMeta = getMoodMeta(effectiveMood);
-  const targetMoodMeta = getMoodMeta(targetMood);
-  const contextMeta = CONTEXTS.find((c) => c.value === preferences.context);
+  const queryMood = searchParams.get('mood');
 
-  // Auto-fetch if user already selected a mood on a prior screen and navigated here with empty list
+  useEffect(() => {
+    if (queryMood && !currentMood) {
+      selectMood(queryMood, { source: 'manual', confidence: 1.0, confirmed: true });
+    }
+  }, [queryMood, currentMood, selectMood]);
+
+  // Automatically fetch recommendations if user arrived with a mood selected but empty list
   useEffect(() => {
     if (
-      effectiveMood &&
+      currentMood &&
       recommendations.length === 0 &&
-      !recommendationsLoading &&
-      !recommendationsError
+      !isLoadingRecommendations &&
+      !recommendationError &&
+      (mode === 'match' || (mode === 'change' && targetMood))
     ) {
-      startSessionAndFetchRecommendations().catch(() => {});
+      startOrUpdateListeningFlow().catch(() => {});
     }
   }, [
-    effectiveMood,
+    currentMood,
+    mode,
+    targetMood,
     recommendations.length,
-    recommendationsLoading,
-    recommendationsError,
-    startSessionAndFetchRecommendations,
+    isLoadingRecommendations,
+    recommendationError,
+    startOrUpdateListeningFlow,
   ]);
 
-  const activeTrackIndex = Math.max(
-    0,
-    recommendations.findIndex((s) => s.id === activeSong?.id)
-  );
+  const currentMoodMeta = currentMood ? getMoodMeta(currentMood) : null;
+  const targetMoodMeta = targetMood ? getMoodMeta(targetMood) : null;
+  const effectiveMoodMeta =
+    mode === 'change' && targetMoodMeta ? targetMoodMeta : currentMoodMeta;
+
+  const handleNextSong = () => {
+    if (recommendations.length === 0) return;
+    const idx = recommendations.findIndex((s) => s.id === activeSong?.id);
+    const nextIdx = idx >= 0 ? (idx + 1) % recommendations.length : 0;
+    setActiveSong(recommendations[nextIdx]);
+  };
+
+  const handlePrevSong = () => {
+    if (recommendations.length === 0) return;
+    const idx = recommendations.findIndex((s) => s.id === activeSong?.id);
+    const prevIdx =
+      idx > 0 ? idx - 1 : Math.max(0, recommendations.length - 1);
+    setActiveSong(recommendations[prevIdx]);
+  };
+
+  const featuredSong = recommendations[0] || null;
+  const featuredMoodMeta = featuredSong
+    ? getMoodMeta(featuredSong.mood_tags?.[0] || currentMood || 'happy')
+    : effectiveMoodMeta || getMoodMeta('happy');
+  const featuredTheme = featuredMoodMeta.artworkTheme || {
+    bg: '#DFF3A3',
+    fg: '#171717',
+    secondary: '#3577D4',
+    tertiary: '#FFFFFF',
+    pattern: 'sunburst',
+  };
+  const featuredSpotify = featuredSong
+    ? parseSpotifyTrackUrl(featuredSong.audio_url)
+    : null;
 
   return (
-    <div data-testid="recommendations-page">
-      {/* Header & Session Context Summary */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card"
-        style={{
-          marginBottom: '1.75rem',
-          background: currentMoodMeta
-            ? currentMoodMeta.gradient
-            : 'linear-gradient(135deg, #CDF7F3 0%, #BFD6F5 100%)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: '1.25rem',
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.45rem',
-                marginBottom: '0.65rem',
-              }}
-            >
-              <span className="eyebrow-pill" style={{ background: '#FFFFFF' }}>
-                <Disc3 size={14} />
-                <span>
-                  {apiMode === 'mock'
-                    ? 'Standalone Demo Mode'
-                    : 'Live Backend Recommendations'}
+    <div
+      className="section impact-recommendations-page"
+      data-testid="recommendations-page"
+    >
+      <div className="container">
+        {/* =================================================================
+            EDITORIAL HEADER & ACTIVE VIBE SUMMARY STRIP
+            ================================================================= */}
+        <div className="impact-rec-header">
+          <div className="impact-rec-header-top">
+            <div>
+              <div className="impact-eyebrow-row" style={{ marginBottom: '0.65rem' }}>
+                <span className="eyebrow">
+                  <Music2 size={14} />
+                  CURATED SESSION SOUNDTRACK
                 </span>
-              </span>
-              {sessionId && (
-                <span className="eyebrow-pill" style={{ background: '#FFFFFF' }}>
-                  Session #{sessionId}
-                </span>
-              )}
+                {sessionId && (
+                  <span className="badge badge-neutral">
+                    Session #{sessionId}
+                  </span>
+                )}
+              </div>
+
+              <h1 className="impact-page-title">Your Soundtrack</h1>
+              <p className="impact-page-lead">
+                {effectiveMoodMeta
+                  ? `Tailored for your ${effectiveMoodMeta.label.toLowerCase()} atmosphere — ${effectiveMoodMeta.tagline.toLowerCase()}.`
+                  : 'Select your mood and preferences to generate a personalized playlist.'}
+              </p>
             </div>
 
-            <h1 className="section-heading" style={{ marginBottom: '0.35rem' }}>
-              Your soundtrack starts here.
-            </h1>
-
-            <p
-              style={{
-                fontSize: '0.96rem',
-                color: 'var(--text-navy)',
-                opacity: 0.88,
-                maxWidth: '64ch',
-              }}
-            >
-              {ETHICAL_DISCLAIMERS.globalFeedbackNote}
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => setRecheckOpen((o) => !o)}
-              data-testid="open-mood-recheck-btn"
-            >
-              <SmilePlus size={16} />
-              <span>{recheckOpen ? 'Close Mood Recheck' : 'Recheck My Mood'}</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => refreshRecommendations().catch(() => {})}
-              disabled={recommendationsLoading || !effectiveMood}
-              data-testid="refresh-recommendations-btn"
-            >
-              <RefreshCw size={15} />
-              <span>
-                {recommendationsLoading
-                  ? 'Refreshing…'
-                  : 'Refresh Recommendations'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => navigate('/discover')}
-            >
-              <Sliders size={15} />
-              <span>Edit Mood & Filters</span>
-            </button>
-
-            <Link to="/journey" className="btn btn-secondary btn-sm">
-              <LineChart size={15} />
-              <span>Mood Journey</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Summary Chips */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.55rem',
-            marginTop: '1.25rem',
-            paddingTop: '1rem',
-            borderTop: '1px solid rgba(31, 49, 73, 0.12)',
-          }}
-          data-testid="recommendation-summary-pills"
-        >
-          <span className="eyebrow-pill" style={{ background: '#FFFFFF' }}>
-            Current Mood: {currentMoodMeta ? currentMoodMeta.label : 'Not Set'}
-          </span>
-          <span className="eyebrow-pill" style={{ background: '#FFFFFF' }}>
-            Mode: {mode === 'change' ? 'Change My Mood' : 'Match My Mood'}
-          </span>
-          {mode === 'change' && (
-            <span className="eyebrow-pill" style={{ background: '#FFFFFF' }}>
-              Target Mood: {targetMoodMeta ? targetMoodMeta.label : 'None'}
-            </span>
-          )}
-          <span className="eyebrow-pill" style={{ background: '#FFFFFF' }}>
-            Language: {preferences.language || 'All Supported'}
-          </span>
-          <span className="eyebrow-pill" style={{ background: '#FFFFFF' }}>
-            Genre: {preferences.genre || 'All Genres'}
-          </span>
-          <span className="eyebrow-pill" style={{ background: '#FFFFFF' }}>
-            Context: {contextMeta ? contextMeta.label : 'Any Context'}
-          </span>
-        </div>
-      </motion.section>
-
-      {/* Optional Mood Recheck Drawer (Section 21) */}
-      {recheckOpen && (
-        <MoodRecheckPanel
-          currentMood={effectiveMood || 'calm'}
-          apiMode={apiMode}
-          onSubmitRecheck={submitMoodRecheck}
-          onClose={() => setRecheckOpen(false)}
-        />
-      )}
-
-      {/* Feedback Status Toast Banner */}
-      {feedbackStatus && (
-        <div
-          role="status"
-          aria-live="polite"
-          className={`alert-banner ${
-            feedbackStatus.state === 'error' ? 'error' : 'info'
-          }`}
-          style={{ marginBottom: '1.35rem', alignItems: 'center' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            {feedbackStatus.state === 'error' ? (
-              <AlertCircle size={18} color="#783652" />
-            ) : (
-              <CheckCircle2 size={18} color="#175E57" />
-            )}
-            <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>
-              {feedbackStatus.message || 'Recording feedback…'}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {feedbackStatus.state === 'success' && (
+            <div className="impact-rec-header-actions">
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => refreshRecommendations().catch(() => {})}
+                className="btn btn-secondary"
+                onClick={() => setShowRecheck((prev) => !prev)}
+                data-testid="open-mood-recheck-btn"
               >
-                <RefreshCw size={13} />
-                <span>Refresh Ranking</span>
+                <Sparkles size={16} />
+                <span>How Are You Feeling Now?</span>
               </button>
-            )}
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => setFeedbackStatus(null)}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* Case 1: User hasn't selected a mood yet */}
-      {!effectiveMood && (
-        <div
-          className="glass-card"
-          data-testid="recommendations-no-mood-state"
-          style={{ textAlign: 'center', padding: '3rem 1.5rem' }}
-        >
-          <Sparkles
-            size={42}
-            color="#1F3149"
-            style={{ marginBottom: '0.85rem' }}
-          />
-          <h2 style={{ fontSize: '1.65rem', marginBottom: '0.45rem' }}>
-            Choose your mood first to unlock recommendations
-          </h2>
-          <p
-            style={{
-              fontSize: '0.95rem',
-              color: 'var(--text-secondary)',
-              maxWidth: '50ch',
-              margin: '0 auto 1.5rem',
-            }}
-          >
-            VibeShift never guesses or shows fake recommendations before you
-            tell us how you feel.
-          </p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => navigate('/discover')}
-          >
-            <span>Go to Mood Discovery</span>
-            <ArrowRight size={17} />
-          </button>
-        </div>
-      )}
-
-      {/* Case 2: Loading State */}
-      {effectiveMood && recommendationsLoading && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="glass-card"
-          style={{ textAlign: 'center', padding: '3rem 1.5rem' }}
-        >
-          <RefreshCw
-            size={36}
-            color="#1F3149"
-            style={{ marginBottom: '0.75rem' }}
-          />
-          <h2 style={{ fontSize: '1.45rem', marginBottom: '0.35rem' }}>
-            Curating your personalized soundtrack…
-          </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Scoring songs by mood, language, genre, listening context, and
-            feedback weights.
-          </p>
-        </div>
-      )}
-
-      {/* Case 3: API Error State (Never silently switches to mock data) */}
-      {effectiveMood && !recommendationsLoading && recommendationsError && (
-        <div
-          role="alert"
-          className="alert-banner error"
-          data-testid="recommendations-error-state"
-          style={{
-            padding: '1.75rem',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            marginBottom: '1.75rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <AlertCircle size={22} color="#783652" />
-            <h2 style={{ fontSize: '1.35rem' }}>
-              Could Not Load Recommendations
-            </h2>
-          </div>
-          <p style={{ fontSize: '0.92rem' }}>{recommendationsError}</p>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-            VibeShift will never display mock recommendations as if they came
-            from the live backend. You can retry the live FastAPI server or
-            explicitly switch to Standalone Demo Mode below.
-          </p>
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.75rem',
-              marginTop: '0.5rem',
-            }}
-          >
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => startSessionAndFetchRecommendations().catch(() => {})}
-            >
-              <RefreshCw size={15} />
-              <span>Retry Request</span>
-            </button>
-            {apiMode === 'live' && (
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  switchApiMode('mock');
-                }}
-              >
-                <FlaskConical size={15} />
-                <span>Switch to Standalone Demo Mode</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Case 4: Empty Recommendations Array */}
-      {effectiveMood &&
-        !recommendationsLoading &&
-        !recommendationsError &&
-        recommendations.length === 0 && (
-          <div
-            className="glass-card"
-            data-testid="recommendations-empty-state"
-            style={{ textAlign: 'center', padding: '2.75rem 1.5rem' }}
-          >
-            <Disc3
-              size={40}
-              color="#1F3149"
-              style={{ marginBottom: '0.75rem' }}
-            />
-            <h2 style={{ fontSize: '1.45rem', marginBottom: '0.35rem' }}>
-              No matching tracks returned
-            </h2>
-            <p
-              style={{
-                fontSize: '0.92rem',
-                color: 'var(--text-secondary)',
-                marginBottom: '1.25rem',
-              }}
-            >
-              Try broadening your language or genre preferences or refreshing the
-              playlist.
-            </p>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '0.75rem',
-              }}
-            >
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() =>
-                  startSessionAndFetchRecommendations().catch(() => {})
-                }
+                className="btn btn-secondary"
+                disabled={!currentMood || isLoadingRecommendations}
+                onClick={() => startOrUpdateListeningFlow().catch(() => {})}
+                data-testid="refresh-recommendations-btn"
               >
                 <RefreshCw size={15} />
-                <span>Fetch Recommendations</span>
+                <span>Refresh</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => navigate('/discover')}
+              >
+                <Sliders size={15} />
+                <span>Adjust Filters</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Active Context Summary Strip */}
+          <div
+            className="impact-vibe-summary-strip"
+            data-testid="recommendation-summary-pills"
+          >
+            <span className="impact-vibe-pill">
+              Current Mood:{' '}
+              <strong>
+                {currentMoodMeta ? currentMoodMeta.label : 'Not Set'}
+              </strong>
+            </span>
+            <span className="impact-vibe-pill">
+              Mode:{' '}
+              <strong>
+                {mode === 'change' ? 'Change My Mood' : 'Match My Mood'}
+              </strong>
+            </span>
+            {mode === 'change' && (
+              <span className="impact-vibe-pill impact-vibe-pill--pink">
+                Target Mood:{' '}
+                <strong>
+                  {targetMoodMeta ? targetMoodMeta.label : 'Choose Target'}
+                </strong>
+              </span>
+            )}
+            <span className="impact-vibe-pill">
+              Language:{' '}
+              <strong>{preferences.language || 'All Supported'}</strong>
+            </span>
+            <span className="impact-vibe-pill">
+              Genre: <strong>{preferences.genre || 'Any Genre'}</strong>
+            </span>
+            <span className="impact-vibe-pill">
+              Activity:{' '}
+              <strong style={{ textTransform: 'capitalize' }}>
+                {preferences.context || 'Any Context'}
+              </strong>
+            </span>
+          </div>
+        </div>
+
+        {/* =================================================================
+            OPTIONAL MOOD RECHECK DRAWER
+            ================================================================= */}
+        <AnimatePresence>
+          {showRecheck && (
+            <MoodRecheckPanel
+              currentMood={currentMood || 'calm'}
+              onSubmitRecheck={performMoodRecheck}
+              onClose={() => setShowRecheck(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Feedback Toast Notification */}
+        {feedbackToast && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="impact-feedback-toast"
+            data-testid="feedback-toast"
+          >
+            <Sparkles size={15} />
+            <span>{feedbackToast}</span>
+          </div>
+        )}
+
+        {/* =================================================================
+            NO MOOD SELECTED EMPTY STATE
+            ================================================================= */}
+        {!currentMood && !isLoadingRecommendations && (
+          <div
+            className="impact-empty-state-card"
+            data-testid="recommendations-no-mood-state"
+          >
+            <Compass size={40} style={{ margin: '0 auto 0.85rem' }} />
+            <h2 className="impact-empty-title">Choose your mood first</h2>
+            <p className="impact-empty-desc">
+              Before we can recommend songs, let us know how you are feeling right now or whether you want to shift toward a new emotional state.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary btn-lg"
+              onClick={() => navigate('/discover')}
+            >
+              <span>Go to Mood & Vibe Discovery</span>
+            </button>
+          </div>
+        )}
+
+        {/* =================================================================
+            LOADING SKELETON STATE
+            ================================================================= */}
+        {isLoadingRecommendations && (
+          <div
+            className="grid-2"
+            aria-busy="true"
+            aria-label="Loading recommendations"
+          >
+            {[1, 2, 3, 4].map((n) => (
+              <div
+                key={n}
+                className="skeleton"
+                style={{ height: '148px', borderRadius: '24px' }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* =================================================================
+            ERROR STATE
+            ================================================================= */}
+        {!isLoadingRecommendations && recommendationError && (
+          <div
+            role="alert"
+            className="impact-empty-state-card"
+            data-testid="recommendations-error-state"
+          >
+            <AlertCircle size={32} color="#8B3252" style={{ margin: '0 auto 0.75rem' }} />
+            <h2 className="impact-empty-title">
+              Could not load recommendations
+            </h2>
+            <p className="impact-empty-desc">{recommendationError}</p>
+            <div className="impact-empty-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => startOrUpdateListeningFlow().catch(() => {})}
+              >
+                <RefreshCw size={16} />
+                <span>Retry Request</span>
               </button>
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => navigate('/discover?step=4')}
+                className="btn btn-secondary"
+                onClick={() => navigate('/discover')}
               >
-                Edit Preferences
+                <ArrowLeft size={16} />
+                <span>Adjust Mood or Filters</span>
               </button>
             </div>
           </div>
         )}
 
-      {/* Case 5: Playlist + Sticky Now Playing Spotify Player */}
-      {effectiveMood &&
-        !recommendationsLoading &&
-        recommendations.length > 0 && (
-          <div className="recommendations-layout">
-            <section aria-label="Recommended Tracks Playlist">
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '0.95rem',
-                }}
+        {/* =================================================================
+            EMPTY RESULT STATE
+            ================================================================= */}
+        {!isLoadingRecommendations &&
+          !recommendationError &&
+          currentMood &&
+          recommendations.length === 0 && (
+            <div
+              className="impact-empty-state-card"
+              data-testid="recommendations-empty-state"
+            >
+              <Music2 size={36} style={{ margin: '0 auto 0.75rem' }} />
+              <h2 className="impact-empty-title">
+                No exact songs matched every filter
+              </h2>
+              <p className="impact-empty-desc">
+                Try broadening your language, genre, or activity context filter in the discovery studio to unlock more songs.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate('/discover')}
               >
-                <h2 style={{ fontSize: '1.35rem' }}>
-                  Top {recommendations.length} Curated Tracks
-                </h2>
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 600,
-                  }}
-                >
-                  Click any track to load in player
-                </span>
+                <Sliders size={16} />
+                <span>Broaden Preferences</span>
+              </button>
+            </div>
+          )}
+
+        {/* =================================================================
+            FEATURED RECOMMENDATION SPOTLIGHT + PLAYLIST & PLAYER LAYOUT
+            ================================================================= */}
+        {!isLoadingRecommendations && recommendations.length > 0 && (
+          <>
+            {/* Featured Recommendation Hero Spotlight Card (Section 16) */}
+            {featuredSong && (
+              <section
+                className="impact-featured-spotlight"
+                aria-label="Featured Recommendation"
+                data-testid="featured-recommendation-card"
+              >
+                <div className="impact-featured-art-col">
+                  <div className="impact-featured-art-frame">
+                    <MoodArtGraphic
+                      pattern={featuredTheme.pattern}
+                      bg={featuredTheme.bg}
+                      fg={featuredTheme.fg}
+                      secondary={featuredTheme.secondary}
+                      tertiary={featuredTheme.tertiary}
+                    />
+                    <span className="impact-featured-ribbon">
+                      <Disc3 size={13} className="spin-slow" />
+                      <span>FEATURED SELECTION #01</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="impact-featured-copy-col">
+                  <div className="impact-featured-meta-top">
+                    <span className="impact-featured-kicker">
+                      TOP MATCH FOR {effectiveMoodMeta?.label?.toUpperCase() || 'YOUR VIBE'}
+                    </span>
+                    <div className="impact-featured-tags">
+                      {featuredSong.language && (
+                        <span className="badge badge-neutral">
+                          {featuredSong.language}
+                        </span>
+                      )}
+                      {featuredSong.genre && (
+                        <span className="badge badge-accent">
+                          {featuredSong.genre}
+                        </span>
+                      )}
+                      {(featuredSong.mood_tags || []).map((mTag) => {
+                        const m = getMoodMeta(mTag);
+                        return (
+                          <span
+                            key={mTag}
+                            className="badge"
+                            style={{
+                              background: m.pillColor,
+                              color: '#171717',
+                              border: '1px solid #171717',
+                            }}
+                          >
+                            {m.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <h2 className="impact-featured-title">{featuredSong.title}</h2>
+                  <p className="impact-featured-artist">{featuredSong.artist}</p>
+
+                  <div className="impact-featured-actions-row">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSong(featuredSong)}
+                      className="btn impact-btn-lime"
+                    >
+                      <Play size={16} />
+                      <span>
+                        {activeSong?.id === featuredSong.id
+                          ? 'Playing in Studio'
+                          : 'Load in Studio Player'}
+                      </span>
+                    </button>
+
+                    {featuredSpotify?.openUrl && (
+                      <a
+                        href={featuredSpotify.openUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-secondary"
+                      >
+                        <span>Listen on Spotify</span>
+                        <ExternalLink size={15} />
+                      </a>
+                    )}
+
+                    <FeedbackControls
+                      songId={featuredSong.id}
+                      activeAction={feedbackMap?.[featuredSong.id] || null}
+                      onFeedback={handleSongFeedback}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Main Two-Column Playlist + Sticky Player Grid */}
+            <div className="recommendations-layout">
+              {/* Left Column: Recommended Track Cards */}
+              <div>
+                <div className="impact-playlist-bar">
+                  <span className="impact-playlist-count">
+                    COMPLETE SOUNDTRACK ({recommendations.length} TRACKS)
+                  </span>
+
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => navigate('/journey')}
+                  >
+                    <LineChart size={15} />
+                    <span>View Mood Journey →</span>
+                  </button>
+                </div>
+
+                <div className="impact-playlist-stack">
+                  {recommendations.map((song, index) => (
+                    <PlaylistCard
+                      key={song.id}
+                      song={song}
+                      index={index}
+                      isSelected={activeSong?.id === song.id}
+                      feedbackAction={feedbackMap?.[song.id] || null}
+                      onSelectSong={setActiveSong}
+                      onFeedback={handleSongFeedback}
+                    />
+                  ))}
+                </div>
               </div>
 
-              <div className="playlist-stack">
-                {recommendations.map((song, idx) => (
-                  <PlaylistCard
-                    key={song.id}
-                    song={song}
-                    index={idx}
-                    isActive={activeSongId === song.id}
-                    feedbackState={feedbackBySong[song.id] || {}}
-                    onSelectTrack={(id) => setActiveSongId(id)}
-                    onFeedback={recordSongInteraction}
-                  />
-                ))}
+              {/* Right Column: Sticky Music Player */}
+              <div className="player-sticky">
+                <MusicPlayer
+                  song={activeSong || recommendations[0]}
+                  apiMode={apiMode}
+                  onNextSong={handleNextSong}
+                  onPrevSong={handlePrevSong}
+                />
               </div>
-            </section>
-
-            <MusicPlayer
-              song={activeSong}
-              apiMode={apiMode}
-              feedbackState={
-                activeSong ? feedbackBySong[activeSong.id] || {} : {}
-              }
-              onFeedback={recordSongInteraction}
-              onPrevTrack={selectPrevSong}
-              onNextTrack={selectNextSong}
-              totalTracks={recommendations.length}
-              currentTrackIndex={activeTrackIndex}
-              replaySignal={replayTriggerCount}
-            />
-          </div>
+            </div>
+          </>
         )}
+      </div>
     </div>
   );
 }
-

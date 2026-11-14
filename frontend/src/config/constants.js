@@ -1,424 +1,474 @@
 /**
- * VibeShift — Central Configuration & Domain Constants
- * Strictly aligned with docs/API_CONTRACT.md, backend/api/*, and backend/services/*
+ * VibeShift — Canonical Frontend Domain Constants & Editorial Visual Design Tokens
+ * Strictly aligned with docs/API_CONTRACT.md, backend/data/songs.csv, and Impact Flow editorial direction.
+ *
+ * Core Editorial Palette:
+ * - Warm Cream Background: #F8F8E9
+ * - Near Black Contrast:   #171717
+ * - Soft Lime Accent:      #DFF3A3
+ * - Electric Blue Accent:  #3577D4
+ * - Blush Pink Accent:     #F3BDD0
+ * - Pure White Surface:    #FFFFFF
  */
 
-export const API_BASE_URL = (
-  import.meta.env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
-).replace(/\/+$/, '');
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 export const DEFAULT_API_MODE =
-  (import.meta.env?.VITE_API_MODE || 'live').toLowerCase() === 'mock'
-    ? 'mock'
-    : 'live';
-
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB client-side ceiling per API contract
-export const CAMERA_CAPTURE_WIDTH = 640;
-export const CAMERA_CAPTURE_HEIGHT = 480;
-export const CAMERA_JPEG_QUALITY = 0.82;
+  import.meta.env.VITE_API_MODE === 'live' ? 'live' : 'mock';
 
 /**
- * Supported Music Moods (Backend ALLOWED_MOODS: happy, sad, calm, energetic, angry, neutral)
+ * Supported Music Moods (6 canonical lowercase values)
+ * Built around the warm-cream + near-black + lime / electric-blue / blush-pink creative system.
  */
 export const MOODS = [
   {
     id: 'happy',
     label: 'Happy',
-    tagline: 'Bright, warm & uplifting',
+    tagline: 'Sunlit grooves & radiant rhythm',
     description:
-      'Lighthearted melodies and radiant rhythms that celebrate or sustain a joyful moment.',
-    icon: 'Sun',
-    gradient: 'linear-gradient(135deg, #CDF7F3 0%, #C8F4E8 52%, #F4CBD9 100%)',
-    surfaceTint: 'rgba(205, 247, 243, 0.52)',
-    borderAccent: '#7BD8CE',
-    accentColor: '#196E63',
-    badgeBg: '#E3FBF7',
-    orbPalette: ['#CDF7F3', '#C8F4E8', '#F4CBD9'],
-    cameraMapped: true,
-    recommendedTargets: ['happy', 'energetic', 'calm'],
+      'Uplifting melodies, bright hooks, and warm rhythmic energy that celebrate where you are.',
+    gradient: 'linear-gradient(135deg, #DFF3A3 0%, #F8F8E9 58%, #FFF7C2 100%)',
+    surfaceTint: '#F4F9DF',
+    pillColor: '#DFF3A3',
+    accent: '#171717',
+    badgeAccent: '#4D6B14',
+    orbColor: '#DFF3A3',
+    orbSecondary: '#3577D4',
+    orbEmissive: '#B8DF52',
+    motionProfile: 'upbeat',
+    iconName: 'Sun',
+    editorialNumber: '01',
+    soundscapeTitle: 'Solar Euphoria',
+    artworkTheme: {
+      bg: '#DFF3A3',
+      fg: '#171717',
+      secondary: '#3577D4',
+      tertiary: '#FFFFFF',
+      pattern: 'sunburst',
+    },
   },
   {
     id: 'calm',
     label: 'Calm',
-    tagline: 'Serene, unhurried & grounding',
+    tagline: 'Weightless acoustic & ambient stillness',
     description:
-      'Gentle acoustic textures and spacious arrangements that give your mind room to breathe.',
-    icon: 'Feather',
-    gradient: 'linear-gradient(135deg, #CDF7F3 0%, #A7E8DD 55%, #BFD6F5 100%)',
-    surfaceTint: 'rgba(167, 232, 221, 0.48)',
-    borderAccent: '#79CFC2',
-    accentColor: '#1B6478',
-    badgeBg: '#E1F8F5',
-    orbPalette: ['#CDF7F3', '#A7E8DD', '#BFD6F5'],
-    cameraMapped: false, // Musical mood — manual choice only
-    recommendedTargets: ['calm', 'happy', 'neutral'],
+      'Unhurried acoustic textures, soft piano resonance, and serene melodic space.',
+    gradient: 'linear-gradient(135deg, #DCE9FA 0%, #F8F8E9 60%, #DFF3A3 100%)',
+    surfaceTint: '#EDF3FB',
+    pillColor: '#DCE9FA',
+    accent: '#3577D4',
+    badgeAccent: '#3577D4',
+    orbColor: '#3577D4',
+    orbSecondary: '#DFF3A3',
+    orbEmissive: '#295FA8',
+    motionProfile: 'serene',
+    iconName: 'Wind',
+    editorialNumber: '02',
+    soundscapeTitle: 'Velvet Horizon',
+    artworkTheme: {
+      bg: '#3577D4',
+      fg: '#FFFFFF',
+      secondary: '#DFF3A3',
+      tertiary: '#F8F8E9',
+      pattern: 'waves',
+    },
   },
   {
     id: 'sad',
     label: 'Sad',
-    tagline: 'Tender, reflective & held with care',
+    tagline: 'Tender strings & reflective solace',
     description:
-      'Empathetic, unhurried songs that sit gently with heavy feelings—or softly help you shift when ready.',
-    icon: 'CloudRain',
-    gradient: 'linear-gradient(135deg, #BFD6F5 0%, #D7E5FA 55%, #F4CBD9 100%)',
-    surfaceTint: 'rgba(191, 214, 245, 0.5)',
-    borderAccent: '#94B8E8',
-    accentColor: '#2F5280',
-    badgeBg: '#EBF2FC',
-    orbPalette: ['#BFD6F5', '#D7E5FA', '#F4CBD9'],
-    cameraMapped: true,
-    recommendedTargets: ['calm', 'neutral', 'happy'],
+      'Gentle, validating compositions that hold space for quiet reflection without harshness.',
+    gradient: 'linear-gradient(135deg, #F3BDD0 0%, #F8F8E9 62%, #E3ECFA 100%)',
+    surfaceTint: '#FBF0F4',
+    pillColor: '#F3BDD0',
+    accent: '#8B3252',
+    badgeAccent: '#8B3252',
+    orbColor: '#F3BDD0',
+    orbSecondary: '#3577D4',
+    orbEmissive: '#D888A6',
+    motionProfile: 'gentle',
+    iconName: 'CloudRain',
+    editorialNumber: '03',
+    soundscapeTitle: 'Midnight Letter',
+    artworkTheme: {
+      bg: '#F3BDD0',
+      fg: '#171717',
+      secondary: '#FFFFFF',
+      tertiary: '#3577D4',
+      pattern: 'ripples',
+    },
   },
   {
     id: 'energetic',
     label: 'Energetic',
-    tagline: 'Kinetic, vibrant & full of momentum',
+    tagline: 'High-voltage pulse & kinetic drive',
     description:
-      'Driving percussion and high-spirited hooks crafted for movement, focus, or electric energy.',
-    icon: 'Zap',
-    gradient: 'linear-gradient(135deg, #C8F4E8 0%, #A7E8DD 50%, #BFD6F5 100%)',
-    surfaceTint: 'rgba(200, 244, 232, 0.52)',
-    borderAccent: '#6FD4BC',
-    accentColor: '#15685A',
-    badgeBg: '#E2FAF2',
-    orbPalette: ['#C8F4E8', '#A7E8DD', '#BFD6F5'],
-    cameraMapped: false, // Musical mood — manual choice only
-    recommendedTargets: ['energetic', 'happy', 'calm'],
+      'Driving percussion, bold basslines, and momentum-building anthems built for motion.',
+    gradient: 'linear-gradient(135deg, #3577D4 0%, #DFF3A3 68%, #F8F8E9 100%)',
+    surfaceTint: '#EBF2FC',
+    pillColor: '#3577D4',
+    accent: '#3577D4',
+    badgeAccent: '#1E56A0',
+    orbColor: '#3577D4',
+    orbSecondary: '#DFF3A3',
+    orbEmissive: '#3577D4',
+    motionProfile: 'dynamic',
+    iconName: 'Zap',
+    editorialNumber: '04',
+    soundscapeTitle: 'Kinetic Pulse',
+    artworkTheme: {
+      bg: '#171717',
+      fg: '#DFF3A3',
+      secondary: '#3577D4',
+      tertiary: '#F3BDD0',
+      pattern: 'prism',
+    },
   },
   {
     id: 'angry',
     label: 'Angry',
-    tagline: 'Intense, cathartic & honest',
+    tagline: 'Cathartic release & grounded power',
     description:
-      'Resonant, high-impact soundscapes to safely channel tension—or decompress toward steadier ground.',
-    icon: 'Flame',
-    gradient: 'linear-gradient(135deg, #F4CBD9 0%, #E7CEE6 52%, #BFD6F5 100%)',
-    surfaceTint: 'rgba(244, 203, 217, 0.48)',
-    borderAccent: '#DFA3B8',
-    accentColor: '#783652',
-    badgeBg: '#FBEBF0',
-    orbPalette: ['#F4CBD9', '#BFD6F5', '#A7E8DD'],
-    cameraMapped: true,
-    recommendedTargets: ['calm', 'neutral', 'energetic'],
+      'Channel intense tension into grounded rhythmic release or decompress toward calm.',
+    gradient: 'linear-gradient(135deg, #F3BDD0 0%, #F6D8C8 56%, #F8F8E9 100%)',
+    surfaceTint: '#FAF0EC',
+    pillColor: '#F3BDD0',
+    accent: '#9E3B33',
+    badgeAccent: '#9E3B33',
+    orbColor: '#E07A5F',
+    orbSecondary: '#F3BDD0',
+    orbEmissive: '#C45B41',
+    motionProfile: 'grounded',
+    iconName: 'Flame',
+    editorialNumber: '05',
+    soundscapeTitle: 'Ember Release',
+    artworkTheme: {
+      bg: '#171717',
+      fg: '#F3BDD0',
+      secondary: '#E07A5F',
+      tertiary: '#F8F8E9',
+      pattern: 'eclipse',
+    },
   },
   {
     id: 'neutral',
     label: 'Neutral',
-    tagline: 'Balanced, clear & open-minded',
+    tagline: 'Balanced flow & open curiosity',
     description:
-      'An easygoing equilibrium when you are simply exploring and open to wherever the music leads.',
-    icon: 'Compass',
-    gradient: 'linear-gradient(135deg, #E8F4FA 0%, #CDF7F3 52%, #D8E6F8 100%)',
-    surfaceTint: 'rgba(205, 247, 243, 0.42)',
-    borderAccent: '#9AC6DF',
-    accentColor: '#365570',
-    badgeBg: '#EEF6FB',
-    orbPalette: ['#CDF7F3', '#BFD6F5', '#C8F4E8'],
-    cameraMapped: true,
-    recommendedTargets: ['happy', 'calm', 'energetic'],
+      'Clean, versatile soundscapes for steady focus, everyday rhythm, and unhurried discovery.',
+    gradient: 'linear-gradient(135deg, #EAE9D7 0%, #F8F8E9 55%, #DFF3A3 100%)',
+    surfaceTint: '#F3F2E4',
+    pillColor: '#E8E7D5',
+    accent: '#171717',
+    badgeAccent: '#3D3D35',
+    orbColor: '#DFF3A3',
+    orbSecondary: '#F3BDD0',
+    orbEmissive: '#9AB858',
+    motionProfile: 'balanced',
+    iconName: 'Compass',
+    editorialNumber: '06',
+    soundscapeTitle: 'Studio Equilibrium',
+    artworkTheme: {
+      bg: '#F8F8E9',
+      fg: '#171717',
+      secondary: '#DFF3A3',
+      tertiary: '#3577D4',
+      pattern: 'grid',
+    },
   },
 ];
 
+export const MOOD_MAP = MOODS.reduce((acc, mood) => {
+  acc[mood.id] = mood;
+  return acc;
+}, {});
+
 export const MOOD_IDS = MOODS.map((m) => m.id);
 
-export const MOOD_MAP = Object.fromEntries(MOODS.map((m) => [m.id, m]));
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
-export function getMoodMeta(moodId) {
-  if (!moodId) return null;
-  return MOOD_MAP[String(moodId).toLowerCase()] || null;
-}
+export const EMOTION_STATUS_META = {
+  success: {
+    title: 'Expression Estimated',
+    guidance:
+      'This is only an estimate of facial expression, not proof of feelings. Please confirm or adjust your mood below.',
+    tone: 'success',
+  },
+  unmapped_expression: {
+    title: 'Manual Mood Selection Needed',
+    guidance:
+      'Your expression does not map directly to a single music mood. Please choose how you feel manually below.',
+    tone: 'warning',
+  },
+  no_face_detected: {
+    title: 'No Face Detected',
+    guidance:
+      'No face was detected in the photo. You can retake the snapshot in clearer lighting or choose your mood manually.',
+    tone: 'warning',
+  },
+  low_confidence: {
+    title: 'Low Expression Confidence',
+    guidance:
+      'Facial expression confidence was low. Please select your mood manually so your playlist fits how you feel.',
+    tone: 'warning',
+  },
+  error: {
+    title: 'Estimation Unavailable',
+    guidance:
+      'Could not estimate facial expression from this image. Please select your mood manually.',
+    tone: 'error',
+  },
+};
 
 /**
- * Mood Direction Modes
+ * Categorical ordering for Mood Journey timeline (No fabricated numerical sentiment score)
+ */
+export const MOOD_CHART_ORDER = [
+  'calm',
+  'neutral',
+  'happy',
+  'energetic',
+  'sad',
+  'angry',
+];
+
+/**
+ * Supported Recommendation Modes (Section 14)
  */
 export const MOOD_MODES = [
   {
     id: 'match',
-    title: 'Match My Mood',
-    subtitle: 'Stay in this space',
-    description: 'Find music that feels right for this moment.',
-    detail:
-      'Honors how you feel right now with songs tuned to your current emotional wavelength.',
-    badge: 'Resonate',
+    label: 'Match My Mood',
+    subtitle: 'Stay with the feeling.',
+    description:
+      'Immerse yourself in songs that mirror and honour your current emotional frequency.',
+    badge: 'Resonance Mode',
+    accentBg: '#DFF3A3',
+    accentText: '#171717',
   },
   {
     id: 'change',
-    title: 'Change My Mood',
-    subtitle: 'Gentle transition',
-    description: 'Choose the feeling you’d like to move toward.',
-    detail:
-      'Select a target mood and let VibeShift curate a supportive musical bridge toward that state.',
-    badge: 'Shift Vibe',
+    label: 'Change My Mood',
+    subtitle: 'Find a different vibe.',
+    description:
+      'Build an intentional musical bridge from how you feel right now toward the state you want next.',
+    badge: 'Transition Mode',
+    accentBg: '#F3BDD0',
+    accentText: '#171717',
   },
 ];
 
 /**
- * Supported Languages (per docs/API_CONTRACT.md)
- * Functional: Malayalam, Hindi, English, Tamil
- * Upcoming (visible as coming soon, disabled to prevent invalid backend filter): Kannada, Telugu
+ * Languages — Active dataset languages + visibly disabled upcoming languages
  */
 export const LANGUAGES = [
-  {
-    value: 'English',
-    label: 'English',
-    nativeName: 'English',
-    region: 'Global Pop, Rock, Melody & Indie',
-    supported: true,
-  },
-  {
-    value: 'Malayalam',
-    label: 'Malayalam',
-    nativeName: 'മലയാളം',
-    region: 'Mollywood Melodies, Classical & Contemporary',
-    supported: true,
-  },
-  {
-    value: 'Hindi',
-    label: 'Hindi',
-    nativeName: 'हिन्दी',
-    region: 'Bollywood Acoustic, Soul, Pop & Dance',
-    supported: true,
-  },
-  {
-    value: 'Tamil',
-    label: 'Tamil',
-    nativeName: 'தமிழ்',
-    region: 'Kollywood Harmonies, Rhythm & Indie',
-    supported: true,
-  },
+  { value: '', label: 'All Supported Languages', supported: true, badge: '140 Tracks', code: 'ALL' },
+  { value: 'English', label: 'English', supported: true, badge: '40 Tracks', code: 'EN' },
+  { value: 'Malayalam', label: 'Malayalam', supported: true, badge: '21 Tracks', code: 'ML' },
+  { value: 'Hindi', label: 'Hindi', supported: true, badge: '40 Tracks', code: 'HI' },
+  { value: 'Tamil', label: 'Tamil', supported: true, badge: '39 Tracks', code: 'TA' },
   {
     value: 'Kannada',
     label: 'Kannada',
-    nativeName: 'ಕನ್ನಡ',
-    region: 'Catalogue expansion in progress',
     supported: false,
-    comingSoonNote: 'Upcoming — awaiting backend catalogue support',
+    badge: 'Coming Soon',
+    code: 'KN',
+    note: 'Not in current dataset',
   },
   {
     value: 'Telugu',
     label: 'Telugu',
-    nativeName: 'తెలుగు',
-    region: 'Catalogue expansion in progress',
     supported: false,
-    comingSoonNote: 'Upcoming — awaiting backend catalogue support',
+    badge: 'Coming Soon',
+    code: 'TE',
+    note: 'Not in current dataset',
   },
 ];
 
-export const SUPPORTED_LANGUAGE_VALUES = LANGUAGES.filter((l) => l.supported).map(
-  (l) => l.value
+/**
+ * Supported Genres (Must match Title-Case dataset values in songs.csv)
+ */
+export const GENRES = [
+  { value: '', label: 'Any Genre', subtitle: 'Full sonic spectrum', accent: '#F8F8E9' },
+  { value: 'Melody', label: 'Melody', subtitle: 'Warm vocal & acoustic', accent: '#DFF3A3' },
+  { value: 'Pop', label: 'Pop', subtitle: 'Crisp hooks & modern pulse', accent: '#F3BDD0' },
+  { value: 'Rock', label: 'Rock', subtitle: 'Guitars, grit & anthemic drive', accent: '#DCE9FA' },
+  { value: 'Classical', label: 'Classical', subtitle: 'Timeless orchestration', accent: '#EAE9D7' },
+  { value: 'Dance', label: 'Dance', subtitle: 'High-tempo rhythm & groove', accent: '#DFF3A3' },
+];
+
+/**
+ * Supported Listening Contexts (Must match lowercase dataset values in songs.csv)
+ */
+export const CONTEXTS = [
+  { value: '', label: 'Any Activity', icon: 'Sparkles', tag: 'Everyday' },
+  { value: 'relax', label: 'Relax', icon: 'Coffee', tag: 'Unwind' },
+  { value: 'study', label: 'Study', icon: 'BookOpen', tag: 'Deep Focus' },
+  { value: 'workout', label: 'Workout', icon: 'Dumbbell', tag: 'High Output' },
+  { value: 'travel', label: 'Travel', icon: 'Compass', tag: 'In Motion' },
+  { value: 'party', label: 'Party', icon: 'Music', tag: 'Social Energy' },
+  { value: 'sleep', label: 'Sleep', icon: 'Moon', tag: 'Night Drift' },
+];
+
+export const SUPPORTED_LANGUAGE_VALUES = LANGUAGES.filter(
+  (l) => l.supported && l.value
+).map((l) => l.value);
+
+export const SUPPORTED_GENRE_VALUES = GENRES.filter((g) => g.value).map(
+  (g) => g.value
+);
+
+export const SUPPORTED_CONTEXT_VALUES = CONTEXTS.filter((c) => c.value).map(
+  (c) => c.value
 );
 
 /**
- * Supported Genres (per docs/API_CONTRACT.md)
+ * Feedback actions accepted by POST /api/feedback
  */
-export const GENRES = [
+export const FEEDBACK_ACTIONS = [
+  { id: 'like', label: 'Like', description: 'Save to your session affinity' },
+  { id: 'replay', label: 'Replay', description: 'Mark as a repeat favourite' },
+  { id: 'skip', label: 'Skip', description: 'Pass and advance to next track' },
+];
+
+/**
+ * Editorial Gallery Soundscape Panels for Homepage Hero (Section 8)
+ */
+export const HERO_GALLERY_PANELS = [
   {
-    value: 'Melody',
-    label: 'Melody',
-    description: 'Warm vocals, lyrical storytelling, and soothing instrumentation',
-    icon: 'Music',
+    id: 'gallery-happy',
+    title: 'Happy',
+    subtitle: 'Sunlit Grooves',
+    category: 'MOOD / 01',
+    moodId: 'happy',
+    bg: '#DFF3A3',
+    text: '#171717',
+    accent: '#3577D4',
+    trackSample: 'Bye Bye Bye • *NSYNC',
+    pattern: 'sunburst',
   },
   {
-    value: 'Pop',
-    label: 'Pop',
-    description: 'Catchy hooks, modern production, and bright arrangements',
-    icon: 'Sparkles',
+    id: 'gallery-calm',
+    title: 'Calm',
+    subtitle: 'Weightless Stillness',
+    category: 'MOOD / 02',
+    moodId: 'calm',
+    bg: '#3577D4',
+    text: '#FFFFFF',
+    accent: '#DFF3A3',
+    trackSample: 'Akamalar • A.R. Rahman',
+    pattern: 'waves',
   },
   {
-    value: 'Rock',
-    label: 'Rock',
-    description: 'Expressive guitars, driving drums, and anthemic energy',
-    icon: 'Guitar',
+    id: 'gallery-energetic',
+    title: 'Energetic',
+    subtitle: 'Kinetic Voltage',
+    category: 'MOOD / 03',
+    moodId: 'energetic',
+    bg: '#171717',
+    text: '#DFF3A3',
+    accent: '#F3BDD0',
+    trackSample: 'Counting Stars • OneRepublic',
+    pattern: 'prism',
   },
   {
-    value: 'Classical',
-    label: 'Classical',
-    description: 'Timeless acoustic grace, serene ragas, and chamber textures',
-    icon: 'Piano',
+    id: 'gallery-reflective',
+    title: 'Reflective',
+    subtitle: 'Tender Solace',
+    category: 'MOOD / 04',
+    moodId: 'sad',
+    bg: '#F3BDD0',
+    text: '#171717',
+    accent: '#3577D4',
+    trackSample: 'Jo Tum Mere Ho • Anuv Jain',
+    pattern: 'ripples',
   },
   {
-    value: 'Dance',
-    label: 'Dance',
-    description: 'Infectious grooves, upbeat tempo, and rhythmic movement',
-    icon: 'Disc',
+    id: 'gallery-melody',
+    title: 'Melody',
+    subtitle: 'Intimate Vocals',
+    category: 'GENRE / 05',
+    moodId: 'calm',
+    bg: '#F2F0DC',
+    text: '#171717',
+    accent: '#3577D4',
+    trackSample: 'Nenjukkul Peidhidum • Harris Jayaraj',
+    pattern: 'vinyl',
+  },
+  {
+    id: 'gallery-classical',
+    title: 'Classical',
+    subtitle: 'Timeless Strings',
+    category: 'GENRE / 06',
+    moodId: 'neutral',
+    bg: '#1F242D',
+    text: '#F8F8E9',
+    accent: '#DFF3A3',
+    trackSample: 'Alag Aasmaan • Anuv Jain',
+    pattern: 'arch',
+  },
+  {
+    id: 'gallery-acoustic',
+    title: 'Acoustic',
+    subtitle: 'Warm Resonance',
+    category: 'SOUNDSCAPE / 07',
+    moodId: 'calm',
+    bg: '#DFF3A3',
+    text: '#171717',
+    accent: '#171717',
+    trackSample: 'Love Yourself • Justin Bieber',
+    pattern: 'strings',
+  },
+  {
+    id: 'gallery-pop',
+    title: 'Pop',
+    subtitle: 'Modern Hooks',
+    category: 'GENRE / 08',
+    moodId: 'happy',
+    bg: '#F3BDD0',
+    text: '#171717',
+    accent: '#171717',
+    trackSample: 'Kesariya • Arijit Singh',
+    pattern: 'circles',
   },
 ];
 
-export const SUPPORTED_GENRE_VALUES = GENRES.map((g) => g.value);
-
 /**
- * Supported Listening Contexts (per docs/API_CONTRACT.md)
+ * Validate and extract a real 22-character Spotify Track ID from an audio_url.
+ * Rejects placeholder strings like "EXAMPLE" or malformed links.
  */
-export const CONTEXTS = [
-  {
-    value: 'relax',
-    label: 'Relaxing',
-    description: 'Unwinding at home, tea breaks, or slow afternoons',
-    icon: 'Coffee',
-  },
-  {
-    value: 'study',
-    label: 'Studying',
-    description: 'Deep reading, coding, writing, or quiet concentration',
-    icon: 'BookOpen',
-  },
-  {
-    value: 'workout',
-    label: 'Workout',
-    description: 'Running, strength training, or active movement',
-    icon: 'Activity',
-  },
-  {
-    value: 'travel',
-    label: 'Traveling',
-    description: 'Window-seat daydreaming, commutes, and open roads',
-    icon: 'Navigation',
-  },
-  {
-    value: 'party',
-    label: 'Party',
-    description: 'Celebrating with friends, social energy, and dancing',
-    icon: 'PartyPopper',
-  },
-  {
-    value: 'sleep',
-    label: 'Sleeping',
-    description: 'Drifting off peacefully with soft, low-tempo soundscapes',
-    icon: 'Moon',
-  },
-];
-
-export const SUPPORTED_CONTEXT_VALUES = CONTEXTS.map((c) => c.value);
-
-/**
- * AI Emotion Endpoint Status Metadata (POST /api/emotion)
- */
-export const EMOTION_STATUS_META = {
-  success: {
-    title: 'Expression Estimate Ready',
-    tone: 'success',
-    guidance:
-      'This is an estimate based on facial expression. You can choose how you actually feel.',
-  },
-  unmapped_expression: {
-    title: 'Manual Mood Selection Needed',
-    tone: 'info',
-    guidance:
-      'Your expression was detected, but expressions like surprise, fear, or disgust don’t automatically map to a single music mood. Please choose the mood that feels right below.',
-  },
-  no_face_detected: {
-    title: 'No Face Detected',
-    tone: 'warning',
-    guidance:
-      'We couldn’t clearly spot a face in the frame. Try facing the camera in even lighting, or simply pick your mood manually below.',
-  },
-  low_confidence: {
-    title: 'Gentle Check — Low Confidence',
-    tone: 'warning',
-    guidance:
-      'The lighting or angle made expression estimation uncertain. Rather than guessing, we invite you to choose your mood directly.',
-  },
-  face_detector_unavailable: {
-    title: 'Camera Detector Unavailable',
-    tone: 'warning',
-    guidance:
-      'The backend face detector is currently unavailable. You can seamlessly select your mood manually below.',
-  },
-  model_weights_not_loaded: {
-    title: 'Expression Model Not Loaded',
-    tone: 'warning',
-    guidance:
-      'The backend expression model weights are not currently loaded. Please select your mood manually.',
-  },
-  preprocessing_failed: {
-    title: 'Frame Could Not Be Processed',
-    tone: 'warning',
-    guidance:
-      'We couldn’t crop the camera snapshot cleanly. You can retake the photo or choose your mood manually.',
-  },
-  invalid_image: {
-    title: 'Invalid Image Format',
-    tone: 'error',
-    guidance:
-      'The snapshot format wasn’t recognized by the server. Please try again or pick your mood manually.',
-  },
-  error: {
-    title: 'Temporary Estimation Issue',
-    tone: 'error',
-    guidance:
-      'The emotion estimation service encountered a temporary hiccup. Please choose your mood manually.',
-  },
-};
-
-/**
- * Mood Source Labels (for Mood Journey & Session logs)
- */
-export const MOOD_SOURCE_LABELS = {
-  manual: {
-    label: 'Manual Selection',
-    shortLabel: 'Manual',
-    description: 'Chosen directly by you',
-  },
-  camera_suggested: {
-    label: 'Camera Estimate (Confirmed)',
-    shortLabel: 'Camera + Confirmed',
-    description: 'Suggested from facial expression and confirmed by you',
-  },
-  recheck: {
-    label: 'Session Mood Recheck',
-    shortLabel: 'Mood Recheck',
-    description: 'Updated by you during your listening session',
-  },
-};
-
-/**
- * Ethical & Scientific Disclaimers
- */
-export const ETHICAL_DISCLAIMERS = {
-  cameraEstimate:
-    'This is an estimate based on facial expression. You can choose how you actually feel.',
-  cameraPrivacy:
-    'Your camera only activates when you click "Enable Camera". Snapshots are processed in-memory and are never saved to disk or external storage.',
-  journeyNote:
-    'Your Mood Journey reflects the categorical moods you personally confirmed during this session—not an automated measurement of internal emotion or proof that music caused a change.',
-  globalFeedbackNote:
-    'Likes, skips, and replays update VibeShift’s recommendation scoring weights to help surface better-fitting tracks on refresh.',
-};
-
-/**
- * Parse and validate a Spotify Track URL safely.
- * Rejects placeholders like "EXAMPLE" or non-Spotify URLs.
- */
-export function parseSpotifyTrackUrl(url) {
-  if (!url || typeof url !== 'string') {
-    return { isValid: false, trackId: null, embedUrl: null, externalUrl: null };
+export function parseSpotifyTrackUrl(audioUrl) {
+  if (!audioUrl || typeof audioUrl !== 'string') {
+    return { isValid: false, trackId: null, embedUrl: null, openUrl: null };
   }
-  const trimmed = url.trim();
-  try {
-    const parsed = new URL(trimmed);
-    if (
-      parsed.hostname !== 'open.spotify.com' &&
-      parsed.hostname !== 'play.spotify.com'
-    ) {
-      return { isValid: false, trackId: null, embedUrl: null, externalUrl: null };
-    }
-    // Match /track/<ID> or /intl-xx/track/<ID>
-    const match = parsed.pathname.match(/\/track\/([A-Za-z0-9]{15,30})/);
-    if (!match || !match[1]) {
-      return { isValid: false, trackId: null, embedUrl: null, externalUrl: null };
-    }
-    const trackId = match[1];
-    if (trackId.toUpperCase() === 'EXAMPLE') {
-      return { isValid: false, trackId: null, embedUrl: null, externalUrl: null };
-    }
+
+  const trimmed = audioUrl.trim();
+  const match = trimmed.match(
+    /^https?:\/\/open\.spotify\.com\/track\/([A-Za-z0-9]{22})(?:[/?#].*)?$/
+  );
+
+  if (!match || !match[1]) {
     return {
-      isValid: true,
-      trackId,
-      embedUrl: `https://open.spotify.com/embed/track/${trackId}?utm_source=generator`,
-      externalUrl: `https://open.spotify.com/track/${trackId}`,
+      isValid: false,
+      trackId: null,
+      embedUrl: null,
+      openUrl: trimmed.startsWith('http') ? trimmed : null,
     };
-  } catch {
-    return { isValid: false, trackId: null, embedUrl: null, externalUrl: null };
   }
+
+  const trackId = match[1];
+  return {
+    isValid: true,
+    trackId,
+    embedUrl: `https://open.spotify.com/embed/track/${trackId}?utm_source=generator`,
+    openUrl: `https://open.spotify.com/track/${trackId}`,
+  };
 }
 
+export function getMoodMeta(moodId) {
+  if (!moodId) return MOOD_MAP.neutral;
+  const normalized = String(moodId).toLowerCase().trim();
+  return MOOD_MAP[normalized] || MOOD_MAP.neutral;
+}

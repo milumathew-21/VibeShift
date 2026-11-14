@@ -41,7 +41,7 @@ describe('VibeShift Frontend Complete Verification Suite', () => {
     resetMockState();
   });
 
-  it('renders Landing Page hero, 3D orb container/fallback, and navigates via Find My Vibe', async () => {
+  it('renders Landing Page hero, floating smartphone, horizontal gallery, 3D orb container, and navigates via Find My Vibe', async () => {
     renderWithRouter(['/'], 'mock');
 
     expect(
@@ -50,6 +50,8 @@ describe('VibeShift Frontend Complete Verification Suite', () => {
       })
     ).toBeInTheDocument();
 
+    expect(screen.getByTestId('hero-floating-phone')).toBeInTheDocument();
+    expect(screen.getByTestId('hero-horizontal-gallery')).toBeInTheDocument();
     expect(screen.getByTestId('animated-mood-orb')).toBeInTheDocument();
     expect(screen.getByTestId('hero-explore-how-btn')).toBeInTheDocument();
 
@@ -67,10 +69,10 @@ describe('VibeShift Frontend Complete Verification Suite', () => {
     renderWithRouter(['/dashboard'], 'mock');
 
     expect(
-      screen.getByRole('heading', { name: /Welcome to your space\./i })
+      screen.getByRole('heading', { name: /What does today sound like\?/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Every feeling deserves a soundtrack\./i)
+      screen.getByText(/Let’s find the soundtrack for this moment\./i)
     ).toBeInTheDocument();
 
     // Honest empty state when no session is active
@@ -258,12 +260,13 @@ describe('VibeShift Frontend Complete Verification Suite', () => {
     // 3. Launch recommendations
     fireEvent.click(screen.getByTestId('launch-recommendations-btn'));
 
-    // 4. Verify Recommendations page loads top-level array of tracks
+    // 4. Verify Recommendations page loads top-level array of tracks & featured card
     expect(
       await screen.findByRole('heading', {
-        name: /Your soundtrack starts here\./i,
+        name: /Your Soundtrack/i,
       })
     ).toBeInTheDocument();
+    expect(screen.getByTestId('featured-recommendation-card')).toBeInTheDocument();
 
     // Like first song
     const likeButtons = screen.getAllByRole('button', { name: /^Like$/i });

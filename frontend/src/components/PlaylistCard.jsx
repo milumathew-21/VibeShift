@@ -1,225 +1,149 @@
 import React from 'react';
-import { Play, Disc3, ExternalLink } from 'lucide-react';
+import { Disc3, ExternalLink, Play, Volume2 } from 'lucide-react';
 import { getMoodMeta, parseSpotifyTrackUrl } from '../config/constants';
 import FeedbackControls from './FeedbackControls';
+import MoodArtGraphic from './MoodArtGraphic';
 
 export default function PlaylistCard({
   song,
-  index,
-  isActive = false,
-  feedbackState = {},
-  onSelectTrack,
+  index = 0,
+  isSelected = false,
+  feedbackAction = null,
+  onSelectSong,
   onFeedback,
 }) {
-  const primaryMoodTag = song.mood_tags?.[0] || 'calm';
-  const moodMeta = getMoodMeta(primaryMoodTag);
+  const primaryMood = song.mood_tags?.[0] || 'neutral';
+  const moodMeta = getMoodMeta(primaryMood);
   const spotifyInfo = parseSpotifyTrackUrl(song.audio_url);
+  const theme = moodMeta.artworkTheme || {
+    bg: '#DFF3A3',
+    fg: '#171717',
+    secondary: '#3577D4',
+    tertiary: '#FFFFFF',
+    pattern: 'sunburst',
+  };
 
   return (
     <article
-      className={`playlist-card ${isActive ? 'active-track' : ''}`}
+      className={`track-card impact-track-card ${isSelected ? 'active-track' : ''}`}
+      onClick={() => onSelectSong(song)}
       data-testid={`playlist-card-${song.id}`}
-      aria-label={`${song.title} by ${song.artist}`}
     >
-      {/* Bespoke CSS Vinyl / Aura Artwork Fallback */}
-      <button
-        type="button"
-        onClick={() => onSelectTrack(song.id)}
-        className="artwork-disc"
-        style={{
-          background:
-            moodMeta?.gradient ||
-            'linear-gradient(135deg, #CDF7F3 0%, #BFD6F5 100%)',
-          cursor: 'pointer',
-        }}
-        aria-label={`Select ${song.title} in player`}
-        title={`Load ${song.title} into Now Playing panel`}
-      >
-        <div
-          style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.92)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 10px rgba(31, 49, 73, 0.14)',
-          }}
-        >
-          {isActive ? (
-            <Disc3 size={16} color="#1F3149" />
-          ) : (
-            <Play size={14} color="#1F3149" style={{ marginLeft: '2px' }} />
-          )}
-        </div>
-        <span
-          style={{
-            position: 'absolute',
-            bottom: '4px',
-            right: '6px',
-            fontSize: '0.64rem',
-            fontFamily: 'var(--font-tech)',
-            fontWeight: 700,
-            color: '#1F3149',
-            opacity: 0.75,
-          }}
-        >
-          #{index + 1}
-        </span>
-      </button>
-
-      {/* Track Metadata */}
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => onSelectTrack(song.id)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-display)',
-              fontSize: '1.12rem',
-              fontWeight: 600,
-              color: '#1F3149',
-            }}
-          >
-            {song.title}
-          </button>
-
-          {isActive && (
-            <span
-              className="eyebrow-pill"
-              style={{
-                padding: '0.14rem 0.55rem',
-                fontSize: '0.68rem',
-                background: '#1F3149',
-                color: '#FFFFFF',
-              }}
-            >
-              Now Selected
+      <div className="impact-track-main-row">
+        {/* Track Number & Editorial Artwork Thumbnail */}
+        <div className="impact-track-thumb-wrap">
+          <div className="impact-track-thumb">
+            <MoodArtGraphic
+              pattern={theme.pattern}
+              bg={theme.bg}
+              fg={theme.fg}
+              secondary={theme.secondary}
+              tertiary={theme.tertiary}
+            />
+            <span className="impact-track-thumb-overlay">
+              {isSelected ? (
+                <Volume2 size={18} />
+              ) : (
+                <Play size={17} />
+              )}
             </span>
-          )}
+          </div>
+          <span className="impact-track-index-num">
+            {String(index + 1).padStart(2, '0')}
+          </span>
         </div>
 
-        <div
-          style={{
-            fontSize: '0.88rem',
-            color: 'var(--text-secondary)',
-            marginBottom: '0.45rem',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {song.artist}
-        </div>
-
-        {/* Language, Genre & Mood Tags */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.38rem' }}>
-          <span
-            style={{
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              padding: '0.16rem 0.58rem',
-              borderRadius: '999px',
-              background: 'rgba(205, 247, 243, 0.65)',
-              color: '#175E57',
-            }}
-          >
-            {song.language}
-          </span>
-
-          <span
-            style={{
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              padding: '0.16rem 0.58rem',
-              borderRadius: '999px',
-              background: 'rgba(191, 214, 245, 0.55)',
-              color: '#2A4668',
-            }}
-          >
-            {song.genre}
-          </span>
-
-          {song.mood_tags?.map((tag) => {
-            const tagMeta = getMoodMeta(tag);
-            return (
-              <span
-                key={tag}
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  padding: '0.16rem 0.58rem',
-                  borderRadius: '999px',
-                  background: tagMeta?.badgeBg || '#F4CBD9',
-                  color: tagMeta?.accentColor || '#1F3149',
-                }}
-              >
-                #{tagMeta?.label || tag}
+        {/* Song Metadata */}
+        <div className="impact-track-info">
+          <div className="impact-track-title-row">
+            <h3 className="impact-track-title">{song.title}</h3>
+            {isSelected && (
+              <span className="impact-now-playing-pill">
+                <Disc3 size={12} className="spin-slow" />
+                <span>Now Selected</span>
               </span>
-            );
-          })}
-        </div>
-      </div>
+            )}
+          </div>
 
-      {/* Playback & Feedback Actions */}
-      <div
-        className="playlist-card-actions"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: '0.55rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <p className="impact-track-artist">{song.artist}</p>
+
+          {/* Editorial Metadata Pills */}
+          <div className="impact-track-tags">
+            {song.language && (
+              <span className="badge badge-neutral">{song.language}</span>
+            )}
+            {song.genre && (
+              <span className="badge badge-accent">{song.genre}</span>
+            )}
+            {(song.mood_tags || []).map((mTag) => {
+              const m = getMoodMeta(mTag);
+              return (
+                <span
+                  key={mTag}
+                  className="badge"
+                  style={{
+                    background: m.pillColor,
+                    color: '#171717',
+                    border: '1px solid #171717',
+                  }}
+                >
+                  {m.label}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Select & Spotify Actions */}
+        <div className="impact-track-actions">
           <button
             type="button"
-            onClick={() => onSelectTrack(song.id)}
             className={`btn btn-sm ${
-              isActive ? 'btn-primary' : 'btn-secondary'
+              isSelected ? 'btn-primary' : 'btn-secondary'
             }`}
-            style={{ padding: '0.42rem 0.85rem', fontSize: '0.78rem' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectSong(song);
+            }}
           >
-            <Play size={13} />
-            <span>{isActive ? 'Focused' : 'Load Player'}</span>
+            <Play size={14} />
+            <span>{isSelected ? 'Loaded' : 'Play'}</span>
           </button>
 
-          {spotifyInfo.isValid && (
+          {spotifyInfo.openUrl && (
             <a
-              href={spotifyInfo.externalUrl}
+              href={spotifyInfo.openUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-secondary btn-sm"
-              style={{ padding: '0.42rem 0.75rem', fontSize: '0.78rem' }}
-              title="Open track directly in Spotify"
+              onClick={(e) => e.stopPropagation()}
+              className="btn btn-ghost btn-sm impact-spotify-mini-link"
+              title="Open track in Spotify"
             >
-              <ExternalLink size={13} />
               <span>Spotify</span>
+              <ExternalLink size={12} />
             </a>
           )}
         </div>
+      </div>
+
+      {/* Feedback Controls Bar */}
+      <div className="impact-track-footer">
+        <span className="impact-track-feedback-hint">
+          {feedbackAction === 'like'
+            ? '♥ Saved to your session favorites'
+            : feedbackAction === 'replay'
+            ? '↻ Marked for replay'
+            : feedbackAction === 'skip'
+            ? '⏭ Skipped in this session'
+            : 'Rate how this song fits your moment:'}
+        </span>
 
         <FeedbackControls
           songId={song.id}
-          feedbackState={feedbackState}
+          activeAction={feedbackAction}
           onFeedback={onFeedback}
-          compact
         />
       </div>
     </article>
   );
 }
-

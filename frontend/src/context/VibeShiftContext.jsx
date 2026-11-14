@@ -121,6 +121,7 @@ export function VibeShiftProvider({ children, initialApiMode = DEFAULT_API_MODE 
         .toLowerCase();
       if (!MOOD_IDS.includes(clean)) return;
       setSelectedMoodDraft(clean);
+      setCurrentMood(clean);
       setMoodSource(source);
       setMoodConfidence(
         typeof confidence === 'number' && !Number.isNaN(confidence)
@@ -128,6 +129,30 @@ export function VibeShiftProvider({ children, initialApiMode = DEFAULT_API_MODE 
           : 1.0
       );
       setMoodConfirmed(false);
+    },
+    []
+  );
+
+  // Flexible alias used by redesigned pages
+  const selectMood = useCallback(
+    (moodId, options = {}) => {
+      const clean = String(moodId || '')
+        .trim()
+        .toLowerCase();
+      if (!MOOD_IDS.includes(clean)) return;
+      const source = options.source || 'manual';
+      const confidence =
+        typeof options.confidence === 'number' && !Number.isNaN(options.confidence)
+          ? options.confidence
+          : 1.0;
+      setSelectedMoodDraft(clean);
+      setCurrentMood(clean);
+      setMoodSource(source);
+      setMoodConfidence(confidence);
+      setMoodConfirmed(Boolean(options.confirmed));
+      if (options.note) {
+        setCameraEstimate((prev) => ({ ...(prev || {}), note: options.note }));
+      }
     },
     []
   );
@@ -611,6 +636,35 @@ export function VibeShiftProvider({ children, initialApiMode = DEFAULT_API_MODE 
     lastLoggedMoodSignatureRef.current = null;
   }, []);
 
+  const resetPreferences = useCallback(() => {
+    setPreferences({ language: '', genre: '', context: '' });
+  }, []);
+
+  const setActiveSong = useCallback((songOrId) => {
+    if (!songOrId) {
+      setActiveSongId(null);
+      return;
+    }
+    const id = typeof songOrId === 'object' ? songOrId.id : songOrId;
+    setActiveSongId(id);
+  }, []);
+
+  const performMoodRecheck = useCallback(
+    async (nextMoodId, options = {}) => {
+      return submitMoodRecheck({
+        mood: nextMoodId,
+        refreshAfter:
+          options.refreshTracks !== undefined ? options.refreshTracks : true,
+      });
+    },
+    [submitMoodRecheck]
+  );
+
+  const feedbackMap = Object.keys(feedbackBySong).reduce((acc, songId) => {
+    acc[songId] = feedbackBySong[songId]?.lastAction || null;
+    return acc;
+  }, {});
+
   const activeSong =
     recommendations.find((s) => s.id === activeSongId) ||
     recommendations[0] ||
@@ -620,62 +674,80 @@ export function VibeShiftProvider({ children, initialApiMode = DEFAULT_API_MODE 
     // API & Connection
     apiMode,
     switchApiMode,
+    toggleApiMode: switchApiMode,
     backendStatus,
     probeBackendHealth,
 
     // Mood State
     selectedMoodDraft,
-    currentMood,
+    currentMood: currentMood || selectedMoodDraft,
     moodConfirmed,
     moodSource,
     moodConfidence,
+    moodNote: cameraEstimate?.note || null,
     cameraEstimate,
     setCameraEstimate,
     selectMoodDraft,
+    selectMood,
     confirmMood,
+    confirmCurrentMood: confirmMood,
     reopenMoodConfirmation,
 
     // Direction & Target
     mode,
     setMoodMode,
+    changeMode: setMoodMode,
     targetMood,
     setTargetMood,
+    selectTargetMood: setTargetMood,
 
     // Preferences
     preferences,
     updatePreferences,
+    resetPreferences,
 
     // Session & Journey
     sessionId,
     sessionCreatedAt,
     journeyEntries,
     journeyLoading,
+    isLoadingJourney: journeyLoading,
     journeyError,
     ensureSession,
     loadSessionJourney,
+    refreshJourney: loadSessionJourney,
 
     // Recommendations & Player
     recommendations,
     recommendationsLoading,
+    isLoadingRecommendations: recommendationsLoading,
     recommendationsError,
+    recommendationError: recommendationsError,
     activeSong,
     activeSongId,
     setActiveSongId,
+    setActiveSong,
     selectNextSong,
     selectPrevSong,
     startSessionAndFetchRecommendations,
+    startOrUpdateListeningFlow: startSessionAndFetchRecommendations,
     refreshRecommendations,
 
     // Feedback & Recheck
     feedbackBySong,
+    feedbackMap,
     feedbackStatus,
+    feedbackToast: feedbackStatus?.message || null,
     setFeedbackStatus,
     replayTriggerCount,
     recordSongInteraction,
+    handleSongFeedback: recordSongInteraction,
     submitMoodRecheck,
+    performMoodRecheck,
 
     // Flow Reset
     resetFlow,
+    resetSession: resetFlow,
   };
 
   return (
